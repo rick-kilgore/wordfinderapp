@@ -302,11 +302,14 @@ public class WordFinder {
         if (nextNode != null) {
           String nextsofar = sofar + sch;
           String nextDotsSoFar = dotsSoFar + (isDot ? String.valueOf(sch) : "");
-          int scoreAdd = letterScores.get(sch) *
-                         (placement == LetterPlacement.TEMPLATE &&
-                                  template.size() > 0 && searchChars.length == 1
-                              ? template.get(0).letterMult
-                              : 1);
+          int scoreAdd =
+              letterScores.get(sch) *
+              (placement == LetterPlacement.TEMPLATE && template.size() > 0
+                   ? template.get(0).letterMult
+                   : 1);
+          if (searchChars.length > 1) {
+            scoreAdd = 0;
+          }
           int multMult =
               placement == LetterPlacement.TEMPLATE && template.size() > 0
                   ? template.get(0).wordMult
