@@ -8,3 +8,4 @@ dependencyResolutionManagement {
 }
 rootProject.name = "WordFinder"
 include ':app'
+include ':wordfinder'
