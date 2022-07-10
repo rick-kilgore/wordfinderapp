@@ -10,3 +10,11 @@ java {
 dependencies {
     implementation 'org.projectlombok:lombok:1.18.24'
 }
+
+jar {
+  manifest {
+    attributes(
+      'Main-Class': 'org.rkilgore.wordfinder.WordFinder'
+    )
+  }
+}
