@@ -13,7 +13,7 @@ import java.util.Scanner;
  *    _requiredLetters
  *    _maxPrefix
  *    _maxPostfix
- *    _words
+ *    _words.
  */
 public class WordFinder {
 
@@ -390,11 +390,43 @@ public class WordFinder {
   }
 
 
+  private static String nextArg(String[] args, int argn) {
+    return nextArg(args, argn, "");
+  }
+
+  private static String nextArg(String[] args, int argn, String defval) {
+    if (argn < args.length) {
+      return args[argn];
+    }
+    return defval;
+  }
+
+
+  private static enum Mode {
+    NORMAL,
+    UNDER,
+    OVER
+  }
+
+
   public static void main(String[] args) {
-    String letters = args[0];
-    String template = args.length > 1 ? args[1] : "";
-    int maxPrefix = args.length > 2 ? Integer.valueOf(args[2]) : 7;
-    int maxPostfix = args.length > 3 ? Integer.valueOf(args[3]) : 7;
+    int argc = 0;
+    Mode mode = Mode.NORMAL;
+    while (argc < args.length && args[argc].startsWith("-")) {
+      String val = nextArg(args, argc++);
+      if ("-under".startsWith(val)) {
+        mode = Mode.UNDER;
+      } else if ("-over".startsWith(val)) {
+        mode = Mode.OVER;
+      } else {
+        System.out.println("unrecognized option: "+val);
+        System.exit(1);
+      }
+    }
+    String letters = nextArg(args, argc++);
+    String template = nextArg(args, argc++);
+    int maxPrefix = Integer.valueOf(nextArg(args, argc++, "7"));
+    int maxPostfix = Integer.valueOf(nextArg(args, argc++, "7"));
 
     if (!validate(letters, template)) {
       return;
