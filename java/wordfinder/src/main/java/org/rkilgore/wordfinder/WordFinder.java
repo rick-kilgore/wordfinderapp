@@ -18,7 +18,7 @@ import java.util.Scanner;
 public class WordFinder {
 
   static class Tile {
-    public static Tile EMPTY = new Tile("empty");
+    public static Tile OPEN = new Tile("open");
     public static Tile DLETTER = new Tile("DL", 2, 1);
     public static Tile TLETTER = new Tile("TL", 3, 1);
     public static Tile DWORD = new Tile("DW", 1, 2);
@@ -26,15 +26,15 @@ public class WordFinder {
     public static Tile forLetter(char letter) {
       return new Tile(letter);
     }
-    public static Tile forEmptyUseLetter(char letter) {
+    public static Tile forOpenUseLetter(char letter) {
       Tile tile = forLetter(letter);
-      tile.empty = true;
+      tile.open = true;
       return tile;
     }
 
     Tile(String name) {
       this.name = name;
-      this.empty = true;
+      this.open = true;
       this.letter = (char) 0;
       this.letterMult = 1;
       this.wordMult = 1;
@@ -42,7 +42,7 @@ public class WordFinder {
 
     Tile(char letter) {
       this("board letter " + letter);
-      this.empty = false;
+      this.open = false;
       this.letter = letter;
     }
 
@@ -61,7 +61,7 @@ public class WordFinder {
     }
 
     public String name;
-    public boolean empty;
+    public boolean open;
     public char letter;
     public int letterMult;
     public int wordMult;
@@ -133,7 +133,7 @@ public class WordFinder {
     List<Tile> tiles = new ArrayList<Tile>();
     for (char ch : template.toCharArray()) {
       if (ch == '.') {
-        tiles.add(Tile.EMPTY);
+        tiles.add(Tile.OPEN);
       } else if (ch == '-') {
         tiles.add(Tile.DLETTER);
       } else if (ch == '+') {
@@ -143,7 +143,7 @@ public class WordFinder {
       } else if (ch == '!') {
         tiles.add(Tile.TWORD);
       } else if (Character.isUpperCase(ch)) {
-        tiles.add(Tile.forEmptyUseLetter(Character.toLowerCase(ch)));
+        tiles.add(Tile.forOpenUseLetter(Character.toLowerCase(ch)));
       } else if (Character.isLetter(ch)) {
         tiles.add(Tile.forLetter(ch));
       } else {
@@ -184,7 +184,7 @@ public class WordFinder {
                            sofar, dotsSoFar, letters, template, curPrefixLen, curPostfixLen,
                            String.valueOf(templateStarted)));
 
-    boolean nextTemplateIsLetter = !template.isEmpty() && !template.get(0).empty;
+    boolean nextTemplateIsLetter = !template.isEmpty() && !template.get(0).open;
     boolean cantAddPostfix = curPostfixLen == this._maxPostfix;
     if ((letters.isEmpty() && !nextTemplateIsLetter) ||
         (template.isEmpty() && cantAddPostfix)) {
@@ -195,7 +195,7 @@ public class WordFinder {
 
     if (!template.isEmpty()) {
       // try adding ch from letters to prefix before template
-      int remainingLettersNeeded = (int) template.stream().filter(tile -> tile.empty).count();
+      int remainingLettersNeeded = (int) template.stream().filter(tile -> tile.open).count();
       if (!templateStarted && curPrefixLen < this._maxPrefix && letters.length() > remainingLettersNeeded) {
         debugLog(String.format("%s    prefix: remaining = %d for sofar=%s letters=%s templ=%s",
                                "  ".repeat(depth),
@@ -209,13 +209,13 @@ public class WordFinder {
     }
 
 
-    if (!template.isEmpty() && template.get(0).empty) {
-      // empty tile - two types
+    if (!template.isEmpty() && template.get(0).open) {
+      // open tile - two types
       Tile nextTile = template.get(0);
       if (nextTile.hasLetter()) {
-        // empty tile for which user has requested to put one of their
+        // open tile for which user has requested to put one of their
         // letters in this spot
-        debugLog(String.format("%s   empty tile - take '%c' from letters: sofar=%s letters=%s templ=%s",
+        debugLog(String.format("%s   open tile - take '%c' from letters: sofar=%s letters=%s templ=%s",
                                "  ".repeat(depth),
                                nextTile.letter, sofar, letters, template));
         char ch = nextTile.letter;
@@ -229,8 +229,8 @@ public class WordFinder {
             letters, template, curPrefixLen, curPostfixLen, true);
 
       } else {
-        // plain old empty tile
-        debugLog(String.format("%s    empty tile: sofar=%s letters=%s templ=%s",
+        // open tile
+        debugLog(String.format("%s    open tile: sofar=%s letters=%s templ=%s",
                                "  ".repeat(depth),
                                sofar, letters, template));
 
@@ -438,7 +438,7 @@ public class WordFinder {
     }
     if (template.matches(".*[^a-zA-Z0-9\\.\\-\\+#!].*")) {
       System.out.println("invalid template: "+template);
-      System.out.println("The template can be a-z, or '.' for an empty space,");
+      System.out.println("The template can be a-z, or '.' for an open space,");
       System.out.println("or [- + # !] to represent [DL TL DW TW]");
       return false;
     }
