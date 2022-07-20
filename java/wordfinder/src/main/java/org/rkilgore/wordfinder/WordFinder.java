@@ -3,6 +3,7 @@ package org.rkilgore.wordfinder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Scanner;
 
@@ -114,8 +115,10 @@ public class WordFinder {
   }
 
 
-  public Map<String, WordInfo> findWords(Mode mode, String letters, String template, int maxPrefix, int maxPostfix) {
+  public Map<String, WordInfo> findWords(Mode mode, String letters, String template) {
 
+    int maxPrefix = 7;
+    int maxPostfix = 7;
     if (!template.isEmpty()) {
       if (Character.isDigit(template.charAt(0))) {
         maxPrefix = Character.digit(template.charAt(0), 10);
@@ -160,7 +163,7 @@ public class WordFinder {
     this._mode = mode;
     recurse(0 /* depth */, "" /* sofar */, "" /* dotsSoFar */,
             0 /* scoreSoFar */, 1 /* wordMultSoFar */, this._dict /* nodeSoFar */,
-            "" /* overUnder */, letters, tiles, false /* templateStarted */,
+            new OverUnder() /* overUnder */, letters, tiles, false /* templateStarted */,
             0 /* curPrefixLen */, 0 /* curPostfixLen */);
     return this._words;
   }
@@ -173,7 +176,7 @@ public class WordFinder {
       int scoreSoFar,
       int wordMultSoFar,
       TrieNode nodeSoFar,
-      String overUnder,
+      OverUnder overUnder,
       String letters,
       List<Tile> template,
       boolean templateStarted,
@@ -249,7 +252,7 @@ public class WordFinder {
             depth, sofar, dotsSoFar, scoreSoFar, wordMultSoFar, nodeSoFar, overUnder,
             letters, template, curPrefixLen, curPostfixLen, false);
 
-    } else if (!template.isEmpty() && this._mode != Mode.NORMAL) {
+    } else if (!template.isEmpty()) {
         // under or over - add letter from letters
         debugLog(String.format("%s    open tile: sofar=%s letters=%s templ=%s",
                                "  ".repeat(depth),
@@ -274,7 +277,7 @@ public class WordFinder {
   private void addLetterFromTemplateAndRecurse(
         int depth, String sofar, String dotsSoFar,
         int scoreSoFar, int wordMultSoFar,
-        TrieNode nodeSoFar, String overUnder,
+        TrieNode nodeSoFar, OverUnder overUnder,
         String letters, List<Tile> template,
         int curPrefixLen, int curPostfixLen, boolean usingLetter) {
     Tile nextTile = template.get(0);
@@ -300,7 +303,7 @@ public class WordFinder {
   private void addLetterFromLettersAndRecurse(
         int depth, String sofar, String dotsSoFar,
         int scoreSoFar, int wordMultSoFar,
-        TrieNode nodeSoFar, String overUnder,
+        TrieNode nodeSoFar, OverUnder overUnder,
         String letters, List<Tile> template,
         int curPrefixLen, int curPostfixLen, LetterPlacement placement) {
     for (char ch : rmDupes(letters).toCharArray()) {
@@ -333,9 +336,9 @@ public class WordFinder {
                 // "  ".repeat(depth), placement, scoreAdd, multMult, sofar, sch, placement == LetterPlacement.TEMPLATE ? template.get(0) : "PREFIX"));
           int nextScore = scoreSoFar + scoreAdd;
           int nextWordMult = wordMultSoFar * multMult;
-          String nextOverUnder = this._mode == Mode.NORMAL || template.size() < 1
+          OverUnder nextOverUnder = this._mode == Mode.NORMAL || template.size() < 1 || placement != LetterPlacement.TEMPLATE
                                    ? overUnder
-                                   : overUnder + template.get(0).letter;
+                                   : overUnder.addOverUnderChar(template.get(0).letter, nextsofar.length() - 1);
           if (nextNode.isword && (newtemplate.isEmpty() || this._mode != Mode.NORMAL) && hasRequiredLetters(nextsofar)) {
             addWord(nextsofar, nextScore * nextWordMult, nextDotsSoFar, nextOverUnder);
           }
@@ -408,7 +411,7 @@ public class WordFinder {
     return true;
   }
 
-  private void addWord(String word, int score, String dotVals, String overUnder) {
+  private void addWord(String word, int score, String dotVals, OverUnder overUnder) {
     debugLog(String.format("        add_word(%s, %s)", word, dotVals));
     WordInfo prev = this._words.get(word);
     if (prev == null || prev.score < score) {
@@ -442,7 +445,7 @@ public class WordFinder {
   }
 
 
-  private static enum Mode {
+  public static enum Mode {
     NORMAL,
     UNDER,
     OVER
@@ -468,8 +471,6 @@ public class WordFinder {
     System.out.println("mode = " + mode);
     String letters = nextArg(args, argc++);
     String template = nextArg(args, argc++);
-    int maxPrefix = Integer.valueOf(nextArg(args, argc++, "7"));
-    int maxPostfix = Integer.valueOf(nextArg(args, argc++, "7"));
 
     if (!validate(letters, template)) {
       return;
@@ -479,7 +480,7 @@ public class WordFinder {
     WordFinder wf = new WordFinder("./scrabble_words.txt");
     WordFinder.reportTime("loaded.");
 
-    Map<String, WordInfo> map = wf.findWords(mode, letters, template, maxPrefix, maxPostfix);
+    Map<String, WordInfo> map = wf.findWords(mode, letters, template);
     WordFinder.reportTime("findWords complete.");
 
     List<String> words = new ArrayList<>(map.keySet());
@@ -500,12 +501,11 @@ public class WordFinder {
     for (String word : words) {
       if (!word.equals(template.toLowerCase().replaceAll("\\d", ""))) {
         WordInfo winfo = map.get(word);
-        System.out.println(
-            String.format("%s%s%s score:%d",
-                          winfo.dotVals.isEmpty() ? "" : winfo.dotVals + ": ",
-                          word,
-                          winfo.overUnder.isEmpty() ? "" : String.format(" (%s)", winfo.overUnder),
-                          winfo.score));
+        System.out.printf(Locale.ROOT, "%s%s%s score:%d%n",
+                winfo.dotVals.isEmpty() ? "" : winfo.dotVals + ": ",
+                word,
+                winfo.overUnder.isEmpty() ? "" : String.format(" (%s)", winfo.overUnder),
+                winfo.score);
       }
     }
   }

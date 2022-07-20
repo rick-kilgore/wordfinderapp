@@ -3,35 +3,48 @@ package org.rkilgore.wordfinderapp;
 import static android.view.inputmethod.EditorInfo.IME_ACTION_DONE;
 import static android.view.inputmethod.EditorInfo.IME_ACTION_GO;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.os.Bundle;
+import android.text.InputType;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ProgressBar;
+import android.widget.Spinner;
 import android.widget.TextView;
 
 import org.rkilgore.wordfinder.WordFinder;
+import org.rkilgore.wordfinder.WordFinder.Mode;
 import org.rkilgore.wordfinder.WordInfo;
 
 import java.io.IOException;
 import java.util.*;
 
-public class MainActivity extends AppCompatActivity implements View.OnKeyListener {
+public class MainActivity extends AppCompatActivity implements View.OnKeyListener, AdapterView.OnItemSelectedListener {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        
+        final Spinner modes = findViewById(R.id.modes_pulldown);
+        ArrayAdapter<CharSequence> items
+                = ArrayAdapter.createFromResource(this, R.array.modes, android.R.layout.simple_spinner_item);
+        items.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        modes.setAdapter(items);
+        modes.setOnItemSelectedListener(this);
 
         ProgressBar spinner = findViewById(R.id.progressBar);
         spinner.setVisibility(View.GONE);
         EditText lettersText = findViewById(R.id.lettersText);
         EditText patternText = findViewById(R.id.patternText);
+        lettersText.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        patternText.setInputType(InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
         lettersText.setOnKeyListener(this);
         patternText.setOnKeyListener(this);
         lettersText.requestFocus();
@@ -77,9 +90,9 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
         spinner.setVisibility(View.VISIBLE);
 
         Thread thread = new Thread() {
-          @SuppressLint("DefaultLocale")
           public void run() {
-            Map<String, WordInfo> map = MainActivity.this.wf.findWords(letters, pattern, 7, 7);
+            Map<String, WordInfo> map
+                = MainActivity.this.wf.findWords(MainActivity.this.mode, letters, pattern);
 
             List<String> words = new ArrayList<>(map.keySet());
             Collections.sort(words, (String a, String b) -> {
@@ -93,7 +106,7 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
                   if (a.length() != b.length()) {
                       return b.length() - a.length();
                   }
-                  if (ainf.dotVals.length() != ainf.dotVals.length()) {
+                  if (ainf.dotVals.length() != binf.dotVals.length()) {
                       return ainf.dotVals.length() - binf.dotVals.length();
                   }
                   if (!ainf.dotVals.equals(binf.dotVals)) {
@@ -106,8 +119,20 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
             for (String word : words) {
                 WordInfo winf = map.get(word);
                 String dotVals = winf.dotVals;
-                String dots =  dotVals.length() > 0 ? dotVals + ": " : "";
-                sb.append(String.format("%s%s score: %d\n", dots, word, winf.score));
+                if (dotVals.length() > 0) {
+                    sb.append(dotVals + ": ");
+                }
+                for (int i = 0; i < word.length(); ++i) {
+                    char ch = word.charAt(i);
+                    sb.append(ch);
+                    if (!winf.overUnder.isEmpty()
+                            && i >= winf.overUnder.startpos
+                            && i < winf.overUnder.startpos + winf.overUnder.chars.length()) {
+                        char overUnder = winf.overUnder.chars.charAt(i - winf.overUnder.startpos);
+                        sb.append(String.format(Locale.ROOT, "(%s)", overUnder));
+                    }
+                }
+                sb.append("  score=").append(winf.score).append("\n");
             }
             runOnUiThread(() -> {
                 spinner.setVisibility(View.GONE);
@@ -127,4 +152,21 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
     }
     
     private WordFinder wf;
+    private Mode mode;
+
+    @Override
+    public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
+        String selected = ((String) adapterView.getItemAtPosition(i)).toLowerCase(Locale.ROOT);
+        this.mode = Mode.NORMAL;
+        for (Mode mode : Mode.values()) {
+            if (selected.equals(mode.name().toLowerCase(Locale.ROOT))) {
+                this.mode = mode;
+            }
+        }
+    }
+
+    @Override
+    public void onNothingSelected(AdapterView<?> adapterView) {
+        this.mode = Mode.NORMAL;
+    }
 }
