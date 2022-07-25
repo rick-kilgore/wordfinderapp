@@ -1,12 +1,22 @@
 package org.rkilgore.wordfinder;
 
 public class OverUnder {
+
+    static {
+      empty = new OverUnder();
+    }
+
     public String chars;
     public int startpos;
+    public static OverUnder empty;
 
     public OverUnder() {
         chars = null;
         startpos = -1;
+    }
+
+    public String toString() {
+      return String.format("[chars=%s startpos=%d]", this.chars, this.startpos);
     }
 
     public OverUnder addOverUnderChar(char ch, int pos) {

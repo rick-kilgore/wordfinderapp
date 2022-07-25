@@ -1,6 +1,7 @@
 package org.rkilgore.wordfinder;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -27,7 +28,7 @@ public class WordFinder {
     public static Tile forLetter(char letter) {
       return new Tile(letter);
     }
-    public static Tile forOpenUseLetter(char letter) {
+    public static Tile openTileWithLetter(char letter) {
       Tile tile = forLetter(letter);
       tile.open = true;
       return tile;
@@ -146,9 +147,11 @@ public class WordFinder {
       } else if (ch == '!') {
         tiles.add(Tile.TWORD);
       } else if (Character.isUpperCase(ch)) {
-        tiles.add(Tile.forOpenUseLetter(Character.toLowerCase(ch)));
-      } else if (Character.isLetter(ch)) {
+        tiles.add(Tile.openTileWithLetter(Character.toLowerCase(ch)));
+      } else if (Character.isLetter(ch) && mode == Mode.NORMAL) {
         tiles.add(Tile.forLetter(ch));
+      } else if (Character.isLetter(ch) /* && mode == Mode.NORMAL */) {
+        tiles.add(Tile.openTileWithLetter(Character.toLowerCase(ch)));
       } else {
         throw new RuntimeException(String.format("Unrecognized character in template: '%c'", ch));
       }
@@ -161,123 +164,250 @@ public class WordFinder {
     this._maxPostfix = maxPostfix;
     this._words = new HashMap<String, WordInfo>();
     this._mode = mode;
-    recurse(0 /* depth */, "" /* sofar */, "" /* dotsSoFar */,
-            0 /* scoreSoFar */, 1 /* wordMultSoFar */, this._dict /* nodeSoFar */,
-            new OverUnder() /* overUnder */, letters, tiles, false /* templateStarted */,
-            0 /* curPrefixLen */, 0 /* curPostfixLen */);
+    this._fullTemplate = tiles;
+    int charsBeforeFirstLetter = 0;
+    while (tiles.size() > charsBeforeFirstLetter && !tiles.get(charsBeforeFirstLetter).hasLetter()) ++charsBeforeFirstLetter;
+    this._templateFirstLetterIndex = charsBeforeFirstLetter;
+    if (mode == Mode.NORMAL) {
+      recurseNormal(0 /* depth */, "" /* sofar */, "" /* dotsSoFar */,
+              0 /* scoreSoFar */, 1 /* wordMultSoFar */, this._dict /* nodeSoFar */,
+              letters, tiles, false /* templateStarted */,
+              0 /* curPrefixLen */, 0 /* curPostfixLen */);
+    } else {
+      recurseOverUnder(0 /* depth */, new OverUnder(), "" /* sofar */, "" /* dotsSoFar */,
+              0 /* scoreSoFar */, 1 /* wordMultSoFar */, this._dict /* nodeSoFar */,
+              letters, tiles, false /* templateStarted */,
+              0 /* curPrefixLen */, 0 /* curPostfixLen */);
+    }
+
     return this._words;
   }
 
 
-  private void recurse(
+  private void recurseNormal(
       int depth,
       String sofar,
       String dotsSoFar,
       int scoreSoFar,
       int wordMultSoFar,
       TrieNode nodeSoFar,
-      OverUnder overUnder,
       String letters,
       List<Tile> template,
       boolean templateStarted,
       int curPrefixLen,
       int curPostfixLen) {
 
-    debugLog(String.format("%srecurse sofar=%s dotsSoFar=%s letters=%s template=%s prefix=%d postfix=%d "
+    debugLog(String.format("%srecurseNormal sofar=%s dotsSoFar=%s letters=%s template=%s prefix=%d postfix=%d "
                            + "templStarted=%s",
                            "  ".repeat(depth),
                            sofar, dotsSoFar, letters, template, curPrefixLen, curPostfixLen,
                            String.valueOf(templateStarted)));
 
-    boolean nextTemplateIsLetter = !template.isEmpty() && !template.get(0).open;
-    boolean cantAddPostfix = curPostfixLen == this._maxPostfix;
-    if ((letters.isEmpty() && !nextTemplateIsLetter) ||
-        (template.isEmpty() && cantAddPostfix)) {
-      debugLog(String.format("    short return: sofar=%s letters=%s templ=%s", sofar, letters, template));
+    // ---> check for terminate recursion
+    if (shouldTerminate(depth, sofar, letters, template, curPostfixLen)) {
       return;
     }
 
+    // ---> try adding from letters to prefix before template
+    tryAddToPrefix(depth, sofar, dotsSoFar, scoreSoFar, wordMultSoFar, nodeSoFar,
+                   letters, template, templateStarted, curPrefixLen);
+
+
+    // ---> open tile two types - empty space or preset letter from letters
+    if (!template.isEmpty()) {
+      addFromTemplateNormal(depth, sofar, dotsSoFar, scoreSoFar, wordMultSoFar, nodeSoFar,
+                            letters, template, curPrefixLen);
+
+    } else {
+      addToPostfixOrTerminate(depth, null, sofar, dotsSoFar, scoreSoFar, wordMultSoFar, nodeSoFar,
+                              letters, curPrefixLen, curPostfixLen);
+    }
+
+  }
+
+  private void recurseOverUnder(
+      int depth,
+      OverUnder overUnder,
+      String sofar,
+      String dotsSoFar,
+      int scoreSoFar,
+      int wordMultSoFar,
+      TrieNode nodeSoFar,
+      String letters,
+      List<Tile> template,
+      boolean templateStarted,
+      int curPrefixLen,
+      int curPostfixLen) {
+
+    debugLog(String.format("%srecurseOverUnder overUnder=%s sofar=%s dotsSoFar=%s letters=%s template=%s prefix=%d postfix=%d "
+                           + "templStarted=%s",
+                           "  ".repeat(depth),
+                           overUnder, sofar, dotsSoFar, letters, template, curPrefixLen, curPostfixLen,
+                           String.valueOf(templateStarted)));
+
+    // ---> check for terminate recursion
+    if (shouldTerminate(depth, sofar, letters, template, curPostfixLen)) {
+      return;
+    }
+
+    // ---> try adding from letters to prefix before template
+    tryAddToPrefix(depth, sofar, dotsSoFar, scoreSoFar, wordMultSoFar, nodeSoFar,
+                   letters, template, templateStarted, curPrefixLen);
+
 
     if (!template.isEmpty()) {
-      // try adding ch from letters to prefix before template
-      int remainingLettersNeeded =
-          this._mode == Mode.NORMAL
-              ? (int)template.stream().filter(tile -> tile.open).count()
-              : template.size();
-      if (!templateStarted && curPrefixLen < this._maxPrefix && letters.length() > remainingLettersNeeded) {
-        debugLog(String.format("%s    prefix: remaining = %d for sofar=%s letters=%s templ=%s",
+        // ---> add letter from letters
+        debugLog(String.format("%s  template tile - add from letters: sofar=%s letters=%s templ=%s",
+                               "  ".repeat(depth),
+                               sofar, letters, template));
+
+        addLetterFromLettersAndRecurse(
+            depth, sofar, dotsSoFar, scoreSoFar, wordMultSoFar, nodeSoFar, overUnder,
+            letters, template, curPrefixLen, curPostfixLen, LetterPlacement.TEMPLATE);
+
+    } else {
+      addToPostfixOrTerminate(depth, overUnder, sofar, dotsSoFar, scoreSoFar, wordMultSoFar, nodeSoFar,
+                              letters, curPrefixLen, curPostfixLen);
+    }
+  }
+
+
+  private boolean shouldTerminate(int depth, String sofar, String letters, List<Tile> template, int curPostfixLen) {
+    boolean nextIsTemplateLetter = !template.isEmpty() && !template.get(0).open;
+    boolean cantAddPostfix = curPostfixLen == this._maxPostfix;
+    if ((letters.isEmpty() && !nextIsTemplateLetter) ||
+        (template.isEmpty() && cantAddPostfix)) {
+      debugLog(String.format("%s  terminate recursion: sofar=%s letters=%s templ=%s postfixLen=%d",
+                             "  ".repeat(depth), sofar, letters, template, curPostfixLen));
+      return true;
+    }
+    return false;
+  }
+
+
+  private void tryAddToPrefix(
+      int depth,
+      String sofar,
+      String dotsSoFar,
+      int scoreSoFar,
+      int wordMultSoFar,
+      TrieNode nodeSoFar,
+      String letters,
+      List<Tile> template,
+      boolean templateStarted,
+      int curPrefixLen) {
+
+    if (!template.isEmpty() && !templateStarted && curPrefixLen < this._maxPrefix) {
+      int remainingLettersNeeded = this._mode == Mode.NORMAL
+          ?  (int)template.stream().filter(tile -> tile.open).count()
+          : this._templateFirstLetterIndex + 1;
+
+      if (letters.length() > remainingLettersNeeded) {
+        debugLog(String.format("%s  prefix add from letters: remainingNeeded=%d for sofar=%s letters=%s templ=%s",
                                "  ".repeat(depth),
                                remainingLettersNeeded,
                                sofar, letters, template));
 
         addLetterFromLettersAndRecurse(
-            depth, sofar, dotsSoFar, scoreSoFar, wordMultSoFar, nodeSoFar, overUnder,
-            letters, template, curPrefixLen, curPostfixLen, LetterPlacement.PREFIX);
+            depth, sofar, dotsSoFar, scoreSoFar, wordMultSoFar, nodeSoFar, OverUnder.empty,
+            letters, template, curPrefixLen, 0, LetterPlacement.PREFIX);
+      } else {
+        debugLog(String.format("%s  no prefix add: remainingNeeded=%d letters=%s",
+                               "  ".repeat(depth),
+                               remainingLettersNeeded, letters));
       }
     }
+  }
 
 
-    if (!template.isEmpty() && template.get(0).open) {
-      // open tile - two types
-      Tile nextTile = template.get(0);
-      if (nextTile.hasLetter()) {
-        // open tile for which user has requested to put one of their
-        // letters in this spot
-        debugLog(String.format("%s   open tile - take '%c' from letters: sofar=%s letters=%s templ=%s",
+  private void addFromTemplateNormal(
+      int depth,
+      String sofar,
+      String dotsSoFar,
+      int scoreSoFar,
+      int wordMultSoFar,
+      TrieNode nodeSoFar,
+      String letters,
+      List<Tile> template,
+      int curPrefixLen) {
+
+    assert !template.isEmpty();
+
+    Tile nextTile = template.get(0);
+    if (!nextTile.open) {
+      // ---> template letter tile - add letter from template
+      assert nextTile.hasLetter();
+      debugLog(String.format("%s  add templ letter '%c': sofar=%s letters=%s templ=%s",
+                             "  ".repeat(depth),
+                             template.get(0).letter,
+                             sofar, letters, template));
+
+      addLetterFromTemplateAndRecurse(
+            depth, sofar, dotsSoFar, scoreSoFar, wordMultSoFar, nodeSoFar,
+            letters, template, curPrefixLen, 0, false);
+
+    } else if (nextTile.hasLetter()) {
+      // ---> tile for which user has requested to put one of their letters in this spot
+      debugLog(String.format("%s  designated letter tile - take '%c' from letters: sofar=%s letters=%s templ=%s",
+                             "  ".repeat(depth),
+                             nextTile.letter, sofar, letters, template));
+      char ch = nextTile.letter;
+      if (letters.indexOf(ch) == -1) {
+        // can't fulfill this request
+        debugLog(String.format("%s  recursion stopped - cannot fill template letter tile '%c': sofar=%s letters=%s templ=%s",
                                "  ".repeat(depth),
                                nextTile.letter, sofar, letters, template));
-        char ch = nextTile.letter;
-        if (letters.indexOf(ch) == -1) {
-          // can't fulfill this request
-          return;
-        }
-        letters = letters.replaceFirst(String.valueOf(ch), "");
-        addLetterFromTemplateAndRecurse(
-            depth, sofar, dotsSoFar, scoreSoFar, wordMultSoFar, nodeSoFar, overUnder,
-            letters, template, curPrefixLen, curPostfixLen, true);
-
-      } else {
-        // either open tile ('.') or mode is UNDER or OVER
-        debugLog(String.format("%s    open tile: sofar=%s letters=%s templ=%s",
-                               "  ".repeat(depth),
-                               sofar, letters, template));
-
-        addLetterFromLettersAndRecurse(
-            depth, sofar, dotsSoFar, scoreSoFar, wordMultSoFar, nodeSoFar, overUnder,
-            letters, template, curPrefixLen, curPostfixLen, LetterPlacement.TEMPLATE);
+        return;
       }
-    } else if (!template.isEmpty() && this._mode == Mode.NORMAL) {
-      // template letter tile - add letter from template
+      letters = letters.replaceFirst(String.valueOf(ch), "");
       addLetterFromTemplateAndRecurse(
-            depth, sofar, dotsSoFar, scoreSoFar, wordMultSoFar, nodeSoFar, overUnder,
-            letters, template, curPrefixLen, curPostfixLen, false);
+          depth, sofar, dotsSoFar, scoreSoFar, wordMultSoFar, nodeSoFar,
+          letters, template, curPrefixLen, 0, true);
 
-    } else if (!template.isEmpty()) {
-        // under or over - add letter from letters
-        debugLog(String.format("%s    open tile: sofar=%s letters=%s templ=%s",
-                               "  ".repeat(depth),
-                               sofar, letters, template));
-
+    } else {
+        // ---> open empty tile ([.-+#!])
         addLetterFromLettersAndRecurse(
-            depth, sofar, dotsSoFar, scoreSoFar, wordMultSoFar, nodeSoFar, overUnder,
-            letters, template, curPrefixLen, curPostfixLen, LetterPlacement.TEMPLATE);
+            depth, sofar, dotsSoFar, scoreSoFar, wordMultSoFar, nodeSoFar, OverUnder.empty,
+            letters, template, curPrefixLen, 0, LetterPlacement.TEMPLATE);
+    }
+  }
 
-    } else if (curPostfixLen < this._maxPostfix) {
-      // at end, add letters for the postfix
-      debugLog(String.format("%s    postfix: sofar=%s letters=%s templ=%s",
+
+  private void addToPostfixOrTerminate(
+      int depth,
+      OverUnder overUnder,
+      String sofar,
+      String dotsSoFar,
+      int scoreSoFar,
+      int wordMultSoFar,
+      TrieNode nodeSoFar,
+      String letters,
+      int curPrefixLen,
+      int curPostfixLen) {
+
+    if (curPostfixLen < this._maxPostfix) {
+      // ---> add letter to the postfix
+      debugLog(String.format("%s  postfix add from letters: sofar=%s letters=%s",
                              "  ".repeat(depth),
-                             sofar, letters, template));
+                             sofar, letters));
 
       addLetterFromLettersAndRecurse(
           depth, sofar, dotsSoFar, scoreSoFar, wordMultSoFar, nodeSoFar, overUnder,
-          letters, template, curPrefixLen, curPostfixLen, LetterPlacement.POSTFIX);
+          letters, Collections.emptyList(), curPrefixLen, curPostfixLen, LetterPlacement.POSTFIX);
+
+    } else {
+      debugLog(String.format("%s  terminate - template and postfix exhausted: sofar=%s letters=%s postfixLen=%d",
+                             "  ".repeat(depth),
+                             letters.charAt(0),
+                             sofar, letters, curPostfixLen));
     }
   }
+
 
   private void addLetterFromTemplateAndRecurse(
         int depth, String sofar, String dotsSoFar,
         int scoreSoFar, int wordMultSoFar,
-        TrieNode nodeSoFar, OverUnder overUnder,
+        TrieNode nodeSoFar,
         String letters, List<Tile> template,
         int curPrefixLen, int curPostfixLen, boolean usingLetter) {
     Tile nextTile = template.get(0);
@@ -293,10 +423,10 @@ public class WordFinder {
       int nextScore = scoreSoFar + scoreAdd;
       int nextWordMult = wordMultSoFar * multMult;
       if (nextNode.isword && (newtemplate.isEmpty() || this._mode != Mode.NORMAL) && hasRequiredLetters(nextsofar)) {
-        addWord(nextsofar, nextScore * nextWordMult, dotsSoFar, overUnder);
+        addWord(nextsofar, nextScore * nextWordMult, dotsSoFar, null);
       }
-      recurse(depth+1, nextsofar, dotsSoFar, nextScore, nextWordMult, nextNode, overUnder,
-              letters, newtemplate, true, curPrefixLen, curPostfixLen);
+      recurseNormal(depth+1, nextsofar, dotsSoFar, nextScore, nextWordMult, nextNode,
+                    letters, newtemplate, true, curPrefixLen, curPostfixLen);
     }
   }
 
@@ -306,7 +436,13 @@ public class WordFinder {
         TrieNode nodeSoFar, OverUnder overUnder,
         String letters, List<Tile> template,
         int curPrefixLen, int curPostfixLen, LetterPlacement placement) {
+
     for (char ch : rmDupes(letters).toCharArray()) {
+      debugLog(String.format("%s  ADDING '%c' from letters - placement=%s: sofar=%s letters=%s templ=%s",
+                             "  ".repeat(depth), ch,
+                             placement,
+                             sofar, letters, template));
+
       boolean isDot = ch == '.';
       String newletters = letters.replaceFirst(isDot ? "\\." : String.valueOf(ch), "");
       List<Tile> newtemplate = placement == LetterPlacement.TEMPLATE ? template.subList(1, template.size()) : template;
@@ -316,9 +452,13 @@ public class WordFinder {
 
       char[] searchChars = isDot ? "abcdefghijklmnopqrstuvwxyz".toCharArray() : new char[] { ch };
       for (char sch : searchChars) {
+        String nextsofar = sofar + sch;
         TrieNode nextNode = nodeSoFar.isPrefix(Character.toString(sch));
-        if (nextNode != null && maybeCheckOverUnder(sch, template, placement)) {
-          String nextsofar = sofar + sch;
+        if (nextNode == null) {
+          debugLog(String.format("%s  terminate recursion - %s is not a word prefix",
+                                 "  ".repeat(depth), nextsofar));
+        }
+        if (nextNode != null && maybeCheckOverUnder(depth, sch, template, placement)) {
           String nextDotsSoFar = dotsSoFar + (isDot ? String.valueOf(sch) : "");
           int scoreAdd =
               letterScores.get(sch) *
@@ -336,39 +476,51 @@ public class WordFinder {
                 // "  ".repeat(depth), placement, scoreAdd, multMult, sofar, sch, placement == LetterPlacement.TEMPLATE ? template.get(0) : "PREFIX"));
           int nextScore = scoreSoFar + scoreAdd;
           int nextWordMult = wordMultSoFar * multMult;
-          OverUnder nextOverUnder = this._mode == Mode.NORMAL || template.size() < 1 || placement != LetterPlacement.TEMPLATE
-                                   ? overUnder
-                                   : overUnder.addOverUnderChar(template.get(0).letter, nextsofar.length() - 1);
-          if (nextNode.isword && (newtemplate.isEmpty() || this._mode != Mode.NORMAL) && hasRequiredLetters(nextsofar)) {
-            addWord(nextsofar, nextScore * nextWordMult, nextDotsSoFar, nextOverUnder);
+
+          if (this._mode == Mode.NORMAL) {
+            if (nextNode.isword && newtemplate.isEmpty() && hasRequiredLetters(nextsofar)) {
+              addWord(nextsofar, nextScore * nextWordMult, nextDotsSoFar, null);
+            }
+            recurseNormal(depth+1, nextsofar, nextDotsSoFar, nextScore, nextWordMult, nextNode,
+                          newletters, newtemplate, nextTemplateStarted, nextPre, nextPost);
+
+          } else {
+            OverUnder nextOverUnder = template.size() < 1 || !template.get(0).hasLetter() || placement != LetterPlacement.TEMPLATE
+                                     ? overUnder
+                                     : overUnder.addOverUnderChar(template.get(0).letter, nextsofar.length() - 1);
+            boolean templateFirstLetterCovered = newtemplate.size() < this._fullTemplate.size() - this._templateFirstLetterIndex;
+            if (nextNode.isword && templateFirstLetterCovered /* && hasRequiredLetters(nextsofar) */) {
+              addWord(nextsofar, nextScore * nextWordMult, nextDotsSoFar, nextOverUnder);
+            }
+            recurseOverUnder(depth+1, nextOverUnder, nextsofar, nextDotsSoFar, nextScore, nextWordMult, nextNode,
+                             newletters, newtemplate, nextTemplateStarted, nextPre, nextPost);
           }
-          recurse(depth+1, nextsofar, nextDotsSoFar, nextScore, nextWordMult, nextNode, nextOverUnder,
-                  newletters, newtemplate, nextTemplateStarted, nextPre, nextPost);
         }
       }
     }
   }
 
-  private boolean maybeCheckOverUnder(char ch, List<Tile> template, LetterPlacement placement) {
-    if (placement != LetterPlacement.TEMPLATE || template.size() < 1) {
+  private boolean maybeCheckOverUnder(int depth, char ch, List<Tile> template, LetterPlacement placement) {
+    if (this._mode == Mode.NORMAL || placement != LetterPlacement.TEMPLATE || template.size() < 1) {
       return true;
     }
-    char tmpl_ch = template.get(0).letter;
-
-    switch(this._mode) {
-      case NORMAL:
-        return true;
-
-      case OVER:
-      case UNDER:
-        char[] twoletters = this._mode == Mode.OVER ? new char[] {ch, tmpl_ch}
-                                                    : new char[] {tmpl_ch, ch};
-        TrieNode node = this._dict.isPrefix(String.valueOf(twoletters));
-        return node != null && node.isword;
-
-      default:
-        throw new RuntimeException("unknown mode: " + this._mode);
+    Tile tile = template.get(0);
+    if (!tile.hasLetter()) {
+      return true;
     }
+    char tmpl_ch = tile.letter;
+
+    char[] twoletters = this._mode == Mode.OVER ? new char[] {ch, tmpl_ch}
+                                                : new char[] {tmpl_ch, ch};
+    String overUnderWord = String.valueOf(twoletters);
+    TrieNode node = this._dict.isPrefix(overUnderWord);
+    if (node == null || !node.isword) {
+      // debug stmt
+      debugLog(String.format("%s  terminate recursion from overunder check: %s is not a word",
+                             "  ".repeat(depth), overUnderWord));
+      return false;
+    }
+    return true;
   }
 
   private void debugLog(String msg) {
@@ -528,6 +680,8 @@ public class WordFinder {
   private static boolean DEBUG = false;
   private TrieNode _dict;
   private Map<String, WordInfo> _words;
+  private List<Tile> _fullTemplate;
+  private int _templateFirstLetterIndex;
   private String _requiredLetters;
   private Mode _mode;
   private int _maxPrefix;
