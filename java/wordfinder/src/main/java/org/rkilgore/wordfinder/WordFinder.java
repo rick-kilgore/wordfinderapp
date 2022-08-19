@@ -75,35 +75,37 @@ public class WordFinder {
     POSTFIX
   }
 
-  static Map<Character, Integer> letterScores;
+  static Map<Character, Integer> letterScores = new HashMap<>();
   static {
-    letterScores = new HashMap<>();
+  }
+
+  public static void setupLetterScores(boolean wwf) {
     letterScores.put('a', 1);
-    letterScores.put('b', 3);
-    letterScores.put('c', 3);
+    letterScores.put('b', wwf ? 4 : 3);
+    letterScores.put('c', wwf ? 4 : 3);
     letterScores.put('d', 2);
     letterScores.put('e', 1);
     letterScores.put('f', 4);
     letterScores.put('g', 3);
-    letterScores.put('h', 4);
+    letterScores.put('h', wwf ? 3 : 4);
     letterScores.put('i', 1);
-    letterScores.put('j', 10);
+    letterScores.put('j', wwf ? 10 : 11);
     letterScores.put('k', 5);
-    letterScores.put('l', 1);
-    letterScores.put('m', 3);
+    letterScores.put('l', wwf ? 2 : 1);
+    letterScores.put('m', wwf ? 4 : 3);
     letterScores.put('n', 2);
     letterScores.put('o', 1);
-    letterScores.put('p', 3);
-    letterScores.put('q', 11);
+    letterScores.put('p', wwf ? 4 : 3);
+    letterScores.put('q', wwf ? 10 : 11);
     letterScores.put('r', 1);
     letterScores.put('s', 1);
     letterScores.put('t', 1);
-    letterScores.put('u', 3);
-    letterScores.put('v', 4);
+    letterScores.put('u', wwf ? 2 : 3);
+    letterScores.put('v', wwf ? 5 : 4);
     letterScores.put('w', 4);
     letterScores.put('x', 8);
-    letterScores.put('y', 4);
-    letterScores.put('z', 11);
+    letterScores.put('y', wwf ? 3 : 4);
+    letterScores.put('z', wwf ? 10 : 11);
   }
 
 
@@ -197,10 +199,10 @@ public class WordFinder {
       int curPrefixLen,
       int curPostfixLen) {
 
-    debugLog(String.format("%srecurseNormal sofar=%s dotsSoFar=%s letters=%s template=%s prefix=%d postfix=%d "
+    debugLog(String.format("%srecurseNormal sofar=%s dotsSoFar=%s letters=%s template=%s score=%d mult=%d prefix=%d postfix=%d "
                            + "templStarted=%s",
                            "  ".repeat(depth),
-                           sofar, dotsSoFar, letters, template, curPrefixLen, curPostfixLen,
+                           sofar, dotsSoFar, letters, template, scoreSoFar, wordMultSoFar, curPrefixLen, curPostfixLen,
                            String.valueOf(templateStarted)));
 
     // ---> check for terminate recursion
@@ -462,10 +464,10 @@ public class WordFinder {
           String nextDotsSoFar = dotsSoFar + (isDot ? String.valueOf(sch) : "");
           int scoreAdd =
               letterScores.get(sch) *
-              (placement == LetterPlacement.TEMPLATE && template.size() > 0
-                   ? template.get(0).letterMult
-                   : 1);
-          if (searchChars.length > 1) {
+                (placement == LetterPlacement.TEMPLATE && template.size() > 0
+                     ? template.get(0).letterMult
+                     : 1);
+          if (isDot) {
             scoreAdd = 0;
           }
           int multMult =
@@ -607,6 +609,7 @@ public class WordFinder {
   public static void main(String[] args) {
     int argc = 0;
     Mode mode = Mode.NORMAL;
+    boolean wwf = false;
     while (argc < args.length && args[argc].startsWith("-")) {
       String val = nextArg(args, argc++);
       if ("-under".startsWith(val)) {
@@ -615,6 +618,8 @@ public class WordFinder {
         mode = Mode.OVER;
       } else if ("-debug".startsWith(val)) {
         DEBUG = true;
+      } else if ("-wwf".startsWith(val)) {
+        wwf = true;
       } else {
         System.out.println("unrecognized option: "+val);
         System.exit(1);
@@ -623,13 +628,14 @@ public class WordFinder {
     System.out.println("mode = " + mode);
     String letters = nextArg(args, argc++);
     String template = nextArg(args, argc++);
+    setupLetterScores(wwf);
 
     if (!validate(letters, template)) {
       return;
     }
 
     WordFinder.reportTime("loading dictionary...");
-    WordFinder wf = new WordFinder("./scrabble_words.txt");
+    WordFinder wf = new WordFinder(wwf ? "./wwf.txt" : "./scrabble_words.txt");
     WordFinder.reportTime("loaded.");
 
     Map<String, WordInfo> map = wf.findWords(mode, letters, template);
