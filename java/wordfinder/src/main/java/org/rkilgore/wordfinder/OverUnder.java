@@ -16,7 +16,7 @@ public class OverUnder {
     }
 
     public String toString() {
-      return String.format("[chars=%s startpos=%d]", this.chars, this.startpos);
+      return String.format("[%d overunder=%s]", this.chars == null ? 0 : this.chars.length(), this.chars);
     }
 
     public OverUnder addOverUnderChar(char ch, int pos) {

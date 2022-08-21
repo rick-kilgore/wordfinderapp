@@ -7,6 +7,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Scanner;
+import lombok.AllArgsConstructor;
+
+
+@AllArgsConstructor
+class OverUnderResult {
+  public final boolean check;
+  public final int scoreToAdd;
+}
 
 
 /**
@@ -76,8 +84,6 @@ public class WordFinder {
   }
 
   static Map<Character, Integer> letterScores = new HashMap<>();
-  static {
-  }
 
   public static void setupLetterScores(boolean wwf) {
     letterScores.put('a', 1);
@@ -460,24 +466,27 @@ public class WordFinder {
           debugLog(String.format("%s  terminate recursion - %s is not a word prefix",
                                  "  ".repeat(depth), nextsofar));
         }
-        if (nextNode != null && maybeCheckOverUnder(depth, sch, template, placement)) {
+        OverUnderResult oures = maybeCheckOverUnder(depth, sch, template, placement);
+        if (nextNode != null && oures.check) {
           String nextDotsSoFar = dotsSoFar + (isDot ? String.valueOf(sch) : "");
+          // FIXME: regarding OverUnderResult.scoreToAdd: this needs to be a supplemental add
+          //        that does not later get multiplied by the word multipliers
           int scoreAdd =
-              letterScores.get(sch) *
+              (letterScores.get(sch) + oures.scoreToAdd) *
                 (placement == LetterPlacement.TEMPLATE && template.size() > 0
                      ? template.get(0).letterMult
                      : 1);
           if (isDot) {
             scoreAdd = 0;
           }
-          int multMult =
+          int wordMult =
               placement == LetterPlacement.TEMPLATE && template.size() > 0
                   ? template.get(0).wordMult
                   : 1;
-          // debugLog(String.format("%sadding to %s: scoreAdd=%d multMult=%d for %s + '%c' on %s space",
-                // "  ".repeat(depth), placement, scoreAdd, multMult, sofar, sch, placement == LetterPlacement.TEMPLATE ? template.get(0) : "PREFIX"));
+          // debugLog(String.format("%sadding to %s: scoreAdd=%d wordMult=%d for %s + '%c' on %s space",
+                // "  ".repeat(depth), placement, scoreAdd, wordMult, sofar, sch, placement == LetterPlacement.TEMPLATE ? template.get(0) : "PREFIX"));
           int nextScore = scoreSoFar + scoreAdd;
-          int nextWordMult = wordMultSoFar * multMult;
+          int nextWordMult = wordMultSoFar * wordMult;
 
           if (this._mode == Mode.NORMAL) {
             if (nextNode.isword && newtemplate.isEmpty() && hasRequiredLetters(nextsofar)) {
@@ -502,13 +511,13 @@ public class WordFinder {
     }
   }
 
-  private boolean maybeCheckOverUnder(int depth, char ch, List<Tile> template, LetterPlacement placement) {
+  private OverUnderResult maybeCheckOverUnder(int depth, char ch, List<Tile> template, LetterPlacement placement) {
     if (this._mode == Mode.NORMAL || placement != LetterPlacement.TEMPLATE || template.size() < 1) {
-      return true;
+      return new OverUnderResult(true, 0);
     }
     Tile tile = template.get(0);
     if (!tile.hasLetter()) {
-      return true;
+      return new OverUnderResult(true, 0);
     }
     char tmpl_ch = tile.letter;
 
@@ -520,9 +529,11 @@ public class WordFinder {
       // debug stmt
       debugLog(String.format("%s  terminate recursion from overunder check: %s is not a word",
                              "  ".repeat(depth), overUnderWord));
-      return false;
+      return new OverUnderResult(false, 0);
     }
-    return true;
+    int scoreToAdd = letterScores.get(tmpl_ch) * tile.wordMult;
+    debugLog(String.format("%s    overunder score %d from %c", "  ".repeat(depth), scoreToAdd, tmpl_ch));
+    return new OverUnderResult(true, scoreToAdd);
   }
 
   private void debugLog(String msg) {
