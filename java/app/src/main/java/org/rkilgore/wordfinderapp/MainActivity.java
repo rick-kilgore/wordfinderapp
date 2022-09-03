@@ -13,6 +13,7 @@ import android.view.View;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.Spinner;
@@ -26,6 +27,18 @@ import java.io.IOException;
 import java.util.*;
 
 public class MainActivity extends AppCompatActivity implements View.OnKeyListener, AdapterView.OnItemSelectedListener {
+
+    private boolean useWwf;
+    private boolean debug;
+    private WordFinder wf;
+    private WordFinder wwf;
+    private Mode mode;
+
+
+    public MainActivity() {
+      this.useWwf = false;
+      this.debug = false;
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,13 +65,22 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
         lettersText.requestFocus();
 
         Scanner wordsFile = null;
-        boolean wwf = true;
         try {
-            wordsFile = new Scanner(getAssets().open(wwf ? "wwf.txt" : "scrabble_words.txt"));
-            this.wf = new WordFinder(wordsFile, wwf);
+            this.wf = new WordFinder(new Scanner(getAssets().open("scrabble_words.txt")), false);
+            this.wwf = new WordFinder(new Scanner(getAssets().open("wwf.txt")), true);
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    public void onWwfClicked(View view) {
+      final CheckBox cb = (CheckBox) view;
+      this.useWwf = cb.isChecked();
+    }
+
+    public void onDebugClicked(View view) {
+      final CheckBox cb = (CheckBox) view;
+      this.debug = cb.isChecked();
     }
 
     public void sendMessage(View view) {
@@ -97,11 +119,12 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
 
         ProgressBar spinner = findViewById(R.id.progressBar);
         spinner.setVisibility(View.VISIBLE);
+        final WordFinder wf = this.useWwf ? this.wwf : this.wf;
+        wf.setDebug(this.debug);
 
         Thread thread = new Thread() {
           public void run() {
-            Map<String, WordInfo> map
-                = MainActivity.this.wf.findWords(MainActivity.this.mode, letters, pattern);
+            Map<String, WordInfo> map = wf.findWords(MainActivity.this.mode, letters, pattern);
 
             List<String> words = new ArrayList<>(map.keySet());
             Collections.sort(words, (String a, String b) -> {
@@ -149,9 +172,6 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
       }
       return true;
     }
-    
-    private WordFinder wf;
-    private Mode mode;
 
     @Override
     public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {

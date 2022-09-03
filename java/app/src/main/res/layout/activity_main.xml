@@ -6,16 +6,42 @@
     android:layout_height="match_parent"
     tools:context=".MainActivity">
 
-    <Spinner
-        android:id="@+id/modes_pulldown"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:layout_marginTop="20dp"
-        app:layout_constraintBottom_toTopOf="@+id/lettersText"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+      android:id="@+id/toprow"
+      android:orientation="horizontal"
+      android:layout_width="fill_parent"
+      android:layout_height="wrap_content"
+      android:paddingLeft="24dp"
+      android:paddingRight="24dp"
+      android:gravity="center">
+
+      <Spinner
+          android:id="@+id/modes_pulldown"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:layout_marginBottom="20dp"
+          android:layout_marginTop="20dp"
+          android:paddingLeft="16dp"
+          android:paddingRight="16dp"
+          app:layout_constraintBottom_toTopOf="@+id/lettersText"
+          app:layout_constraintEnd_toEndOf="parent"
+          app:layout_constraintStart_toStartOf="parent"
+          app:layout_constraintTop_toTopOf="parent" />
+
+      <CheckBox android:id="@+id/cb_wwf"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:paddingRight="16dp"
+          android:text="@string/wwf"
+          android:onClick="onWwfClicked"/>
+
+      <CheckBox android:id="@+id/cb_debug"
+          android:layout_width="wrap_content"
+          android:layout_height="wrap_content"
+          android:paddingRight="16dp"
+          android:text="@string/debug"
+          android:onClick="onDebugClicked"/>
+    </LinearLayout>
 
     <EditText
         android:id="@+id/lettersText"
@@ -37,7 +63,7 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.5"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/modes_pulldown" />
+        app:layout_constraintTop_toBottomOf="@+id/toprow" />
 
     <EditText
         android:id="@+id/patternText"

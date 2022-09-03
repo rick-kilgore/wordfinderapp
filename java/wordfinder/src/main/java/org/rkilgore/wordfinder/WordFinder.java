@@ -122,13 +122,18 @@ public class WordFinder {
   public WordFinder(String dictfilename, boolean wwf) {
     this._dict = new TrieNode(dictfilename);
     this.setupLetterScores(wwf);
+    this.debug = false;
   }
 
   public WordFinder(Scanner scanner, boolean wwf) {
     this._dict = new TrieNode(scanner);
     this.setupLetterScores(wwf);
+    this.debug = false;
   }
 
+  public void setDebug(boolean debug) {
+    this.debug = debug;
+  }
 
   public Map<String, WordInfo> findWords(Mode mode, String letters, String template) {
 
@@ -586,7 +591,7 @@ public class WordFinder {
   }
 
   private void debugLog(String msg) {
-    if (DEBUG) {
+    if (this.debug) {
       logger.info(msg);
     }
   }
@@ -663,6 +668,7 @@ public class WordFinder {
     int argc = 0;
     Mode mode = Mode.NORMAL;
     boolean wwf = false;
+    boolean debug = false;
     while (argc < args.length && args[argc].startsWith("-")) {
       String val = nextArg(args, argc++);
       if ("-under".startsWith(val)) {
@@ -670,7 +676,7 @@ public class WordFinder {
       } else if ("-over".startsWith(val)) {
         mode = Mode.OVER;
       } else if ("-debug".startsWith(val)) {
-        DEBUG = true;
+        debug = true;
       } else if ("-wwf".startsWith(val)) {
         wwf = true;
       } else {
@@ -688,6 +694,7 @@ public class WordFinder {
 
     WordFinder.reportTime("loading dictionary...");
     WordFinder wf = new WordFinder(wwf ? "./wwf.txt" : "./scrabble_words.txt", wwf);
+    wf.setDebug(debug);
     WordFinder.reportTime("loaded.");
 
     Map<String, WordInfo> map = wf.findWords(mode, letters, template);
@@ -735,7 +742,7 @@ public class WordFinder {
     return true;
   }
 
-  private static boolean DEBUG = false;
+  private boolean debug;
   private TrieNode _dict;
   private Map<String, WordInfo> _words;
   private Map<Character, Integer> _letterScores = new HashMap<>();

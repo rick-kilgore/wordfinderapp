@@ -8,4 +8,6 @@
         <item>Over</item>
         <item>Under</item>
     </string-array>
+    <string name="wwf">WWF</string>
+    <string name="debug">debug</string>
 </resources>
