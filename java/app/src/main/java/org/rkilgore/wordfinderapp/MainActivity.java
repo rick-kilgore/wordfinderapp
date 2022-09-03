@@ -19,7 +19,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import org.rkilgore.wordfinder.WordFinder;
-import org.rkilgore.wordfinder.WordFinder.Mode;
+import org.rkilgore.wordfinder.Mode;
 import org.rkilgore.wordfinder.WordInfo;
 
 import java.io.IOException;
@@ -31,7 +31,9 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        
+
+        AndroidLoggingHandler.reset(new AndroidLoggingHandler());
+
         final Spinner modes = findViewById(R.id.modes_pulldown);
         ArrayAdapter<CharSequence> items
                 = ArrayAdapter.createFromResource(this, R.array.modes, android.R.layout.simple_spinner_item);
@@ -50,9 +52,10 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
         lettersText.requestFocus();
 
         Scanner wordsFile = null;
+        boolean wwf = true;
         try {
-            wordsFile = new Scanner(getAssets().open("scrabble_words.txt"));
-            this.wf = new WordFinder(wordsFile);
+            wordsFile = new Scanner(getAssets().open(wwf ? "wwf.txt" : "scrabble_words.txt"));
+            this.wf = new WordFinder(wordsFile, wwf);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -86,6 +89,12 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
         output.setText("");
         output.invalidate();
 
+        if (!WordFinder.validate(letters, pattern)) {
+          output.setText("validation failed");
+          output.invalidate();
+          return;
+        }
+
         ProgressBar spinner = findViewById(R.id.progressBar);
         spinner.setVisibility(View.VISIBLE);
 
@@ -101,7 +110,7 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
                   assert ainf != null;
                   assert binf != null;
                   if (ainf.score != binf.score) {
-                      return binf.score - ainf.score;
+                      return binf.score.score - ainf.score.score;
                   }
                   if (a.length() != b.length()) {
                       return b.length() - a.length();
@@ -117,22 +126,12 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
 
             StringBuilder sb = new StringBuilder();
             for (String word : words) {
-                WordInfo winf = map.get(word);
-                String dotVals = winf.dotVals;
-                if (dotVals.length() > 0) {
-                    sb.append(dotVals + ": ");
-                }
-                for (int i = 0; i < word.length(); ++i) {
-                    char ch = word.charAt(i);
-                    sb.append(ch);
-                    if (!winf.overUnder.isEmpty()
-                            && i >= winf.overUnder.startpos
-                            && i < winf.overUnder.startpos + winf.overUnder.chars.length()) {
-                        char overUnder = winf.overUnder.chars.charAt(i - winf.overUnder.startpos);
-                        sb.append(String.format(Locale.ROOT, "(%s)", overUnder));
-                    }
-                }
-                sb.append("  score=").append(winf.score).append("\n");
+                WordInfo winfo = map.get(word);
+                sb.append(String.format("%s%s%s score:%d%n",
+                        winfo.dotVals.isEmpty() ? "" : winfo.dotVals + ": ",
+                        word,
+                        winfo.overUnder.isEmpty() ? "" : String.format(" %s", winfo.overUnder.forWord(word, mode)),
+                        winfo.score.score()));
             }
             runOnUiThread(() -> {
                 spinner.setVisibility(View.GONE);

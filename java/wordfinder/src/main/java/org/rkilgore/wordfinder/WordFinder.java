@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.logging.Logger;
 import lombok.AllArgsConstructor;
 
 
@@ -86,44 +87,46 @@ public class WordFinder {
     POSTFIX
   }
 
-  static Map<Character, Integer> letterScores = new HashMap<>();
+  private static Logger logger = Logger.getLogger("WordFinder");
 
-  public static void setupLetterScores(boolean wwf) {
-    letterScores.put('a', 1);
-    letterScores.put('b', wwf ? 4 : 3);
-    letterScores.put('c', wwf ? 4 : 3);
-    letterScores.put('d', 2);
-    letterScores.put('e', 1);
-    letterScores.put('f', 4);
-    letterScores.put('g', 3);
-    letterScores.put('h', wwf ? 3 : 4);
-    letterScores.put('i', 1);
-    letterScores.put('j', wwf ? 10 : 11);
-    letterScores.put('k', 5);
-    letterScores.put('l', wwf ? 2 : 1);
-    letterScores.put('m', wwf ? 4 : 3);
-    letterScores.put('n', 2);
-    letterScores.put('o', 1);
-    letterScores.put('p', wwf ? 4 : 3);
-    letterScores.put('q', wwf ? 10 : 11);
-    letterScores.put('r', 1);
-    letterScores.put('s', 1);
-    letterScores.put('t', 1);
-    letterScores.put('u', wwf ? 2 : 3);
-    letterScores.put('v', wwf ? 5 : 4);
-    letterScores.put('w', 4);
-    letterScores.put('x', 8);
-    letterScores.put('y', wwf ? 3 : 4);
-    letterScores.put('z', wwf ? 10 : 11);
+  private void setupLetterScores(boolean wwf) {
+    _letterScores.put('a', 1);
+    _letterScores.put('b', wwf ? 4 : 3);
+    _letterScores.put('c', wwf ? 4 : 3);
+    _letterScores.put('d', 2);
+    _letterScores.put('e', 1);
+    _letterScores.put('f', 4);
+    _letterScores.put('g', 3);
+    _letterScores.put('h', wwf ? 3 : 4);
+    _letterScores.put('i', 1);
+    _letterScores.put('j', wwf ? 10 : 11);
+    _letterScores.put('k', 5);
+    _letterScores.put('l', wwf ? 2 : 1);
+    _letterScores.put('m', wwf ? 4 : 3);
+    _letterScores.put('n', 2);
+    _letterScores.put('o', 1);
+    _letterScores.put('p', wwf ? 4 : 3);
+    _letterScores.put('q', wwf ? 10 : 11);
+    _letterScores.put('r', 1);
+    _letterScores.put('s', 1);
+    _letterScores.put('t', 1);
+    _letterScores.put('u', wwf ? 2 : 3);
+    _letterScores.put('v', wwf ? 5 : 4);
+    _letterScores.put('w', 4);
+    _letterScores.put('x', 8);
+    _letterScores.put('y', wwf ? 3 : 4);
+    _letterScores.put('z', wwf ? 10 : 11);
   }
 
 
-  public WordFinder(String dictfilename) {
+  public WordFinder(String dictfilename, boolean wwf) {
     this._dict = new TrieNode(dictfilename);
+    this.setupLetterScores(wwf);
   }
 
-  public WordFinder(Scanner scanner) {
+  public WordFinder(Scanner scanner, boolean wwf) {
     this._dict = new TrieNode(scanner);
+    this.setupLetterScores(wwf);
   }
 
 
@@ -463,11 +466,7 @@ public class WordFinder {
     if (nextNode != null) {
       String nextsofar = sofar + ch;
       List<Tile> newtemplate = template.subList(1, template.size());
-      // FIXME: don't think I need the usingLetter conditions below, b/c letterMult
-      // and wordMult should both be 1 in if it is an already placed letter
-      // int scoreAdd = usingLetter ? (letterScores.get(ch) * template.get(0).letterMult) : letterScores.get(ch);
-      // int wordMult = usingLetter ? template.get(0).wordMult : 1;
-      int scoreAdd = nextTile.isZeroLetter ? 0 : letterScores.get(ch) * template.get(0).letterMult;
+      int scoreAdd = nextTile.isZeroLetter ? 0 : _letterScores.get(ch) * template.get(0).letterMult;
       int wordMult = template.get(0).wordMult;
       // debugLog(String.format("%sadding to TEMPLATE: scoreAdd=%d wordMult=%d for %s + '%c' on %s space",
             // forDepth(depth), scoreAdd, wordMult, sofar, ch, template.get(0)));
@@ -519,7 +518,7 @@ public class WordFinder {
                 (placement == LetterPlacement.TEMPLATE && template.size() > 0
                      ? template.get(0).letterMult
                      : 1);
-          int letterAdd = isDot ? 0 : letterScores.get(sch) * letterMult;
+          int letterAdd = isDot ? 0 : _letterScores.get(sch) * letterMult;
           int wordMult = 
               placement == LetterPlacement.TEMPLATE && template.size() > 0
                   ? template.get(0).wordMult
@@ -581,14 +580,14 @@ public class WordFinder {
                              forDepth(depth), overUnderWord));
       return new OverUnderResult(false, 0, true);
     }
-    int scoreToAdd = tile.isZeroLetter ? 0 : letterScores.get(tmpl_ch);
+    int scoreToAdd = tile.isZeroLetter ? 0 : _letterScores.get(tmpl_ch);
     debugLog(String.format("%s    overunder score %d from %c", forDepth(depth), scoreToAdd, tmpl_ch));
     return new OverUnderResult(true, scoreToAdd, true);
   }
 
   private void debugLog(String msg) {
     if (DEBUG) {
-      System.out.println(msg);
+      logger.info(msg);
     }
   }
 
@@ -682,14 +681,13 @@ public class WordFinder {
     System.out.println("mode = " + mode);
     String letters = nextArg(args, argc++);
     String template = nextArg(args, argc++);
-    setupLetterScores(wwf);
 
     if (!validate(letters, template)) {
       return;
     }
 
     WordFinder.reportTime("loading dictionary...");
-    WordFinder wf = new WordFinder(wwf ? "./wwf.txt" : "./scrabble_words.txt");
+    WordFinder wf = new WordFinder(wwf ? "./wwf.txt" : "./scrabble_words.txt", wwf);
     WordFinder.reportTime("loaded.");
 
     Map<String, WordInfo> map = wf.findWords(mode, letters, template);
@@ -722,7 +720,7 @@ public class WordFinder {
     }
   }
 
-  private static boolean validate(String letters, String template) {
+  public static boolean validate(String letters, String template) {
     if (letters.length() < 1 || letters.matches(".*[^a-zA-Z\\.].*")) {
       System.out.println("invalid letters: "+letters);
       System.out.println("Letters can be a-z or '.' to represent a blank tile");
@@ -740,6 +738,7 @@ public class WordFinder {
   private static boolean DEBUG = false;
   private TrieNode _dict;
   private Map<String, WordInfo> _words;
+  private Map<Character, Integer> _letterScores = new HashMap<>();
   private List<Tile> _fullTemplate;
   private int _templateFirstLetterIndex;
   private String _requiredLetters;
