@@ -24,9 +24,19 @@ import org.rkilgore.wordfinder.Mode;
 import org.rkilgore.wordfinder.WordInfo;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.*;
+import java.util.logging.LogManager;
 
 public class MainActivity extends AppCompatActivity implements View.OnKeyListener, AdapterView.OnItemSelectedListener {
+
+  static {
+    try (InputStream is = WordFinder.class.getClassLoader().getResourceAsStream("logging.properties")) {
+      LogManager.getLogManager().readConfiguration(is);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
 
     private boolean useWwf;
     private boolean debug;

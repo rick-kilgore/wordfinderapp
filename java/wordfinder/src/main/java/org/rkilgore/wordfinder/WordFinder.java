@@ -1,5 +1,7 @@
 package org.rkilgore.wordfinder;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -7,6 +9,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.logging.LogManager;
 import java.util.logging.Logger;
 import lombok.AllArgsConstructor;
 
@@ -477,7 +480,7 @@ public class WordFinder {
             // forDepth(depth), scoreAdd, wordMult, sofar, ch, template.get(0)));
       ScoreKeeper nextScore = scoreSoFar.add(scoreAdd).mult(wordMult);
       if (nextNode.isword && (newtemplate.isEmpty() || this._mode != Mode.NORMAL) && hasRequiredLetters(nextsofar)) {
-        addWord(nextsofar, nextScore, dotsSoFar, null);
+        addWord(depth, nextsofar, nextScore, dotsSoFar, null);
       }
       recurseNormal(depth+1, nextsofar, dotsSoFar, nextScore, nextNode,
                     letters, newtemplate, true, curPrefixLen, curPostfixLen);
@@ -548,14 +551,14 @@ public class WordFinder {
                                    ouScoreAdd,
                                    nextScore));
             if (nextNode.isword && templateFirstLetterCovered /* && hasRequiredLetters(nextsofar) */) {
-              addWord(nextsofar, nextScore, nextDotsSoFar, nextOverUnder);
+              addWord(depth, nextsofar, nextScore, nextDotsSoFar, nextOverUnder);
             }
             recurseOverUnder(depth+1, nextOverUnder, nextsofar, nextDotsSoFar, nextScore, nextNode,
                              newletters, newtemplate, nextTemplateStarted, nextPre, nextPost);
 
           } else {
             if (nextNode.isword && newtemplate.isEmpty() && hasRequiredLetters(nextsofar)) {
-              addWord(nextsofar, nextScore, nextDotsSoFar, null);
+              addWord(depth, nextsofar, nextScore, nextDotsSoFar, null);
             }
             recurseNormal(depth+1, nextsofar, nextDotsSoFar, nextScore, nextNode,
                           newletters, newtemplate, nextTemplateStarted, nextPre, nextPost);
@@ -630,8 +633,8 @@ public class WordFinder {
     return true;
   }
 
-  private void addWord(String word, ScoreKeeper score, String dotVals, OverUnder overUnder) {
-    debugLog(String.format("        addWord(%s, %s, %s=%d)", word, dotVals, score, score.score()));
+  private void addWord(int depth, String word, ScoreKeeper score, String dotVals, OverUnder overUnder) {
+    debugLog(String.format("%s    addWord(%s, %s, %s=%d)", forDepth(depth), word, dotVals, score, score.score()));
     WordInfo prev = this._words.get(word);
     if (prev == null || prev.score.score() < score.score()) {
       this._words.put(word, new WordInfo(score, dotVals, overUnder));
@@ -661,6 +664,14 @@ public class WordFinder {
       return args[argn];
     }
     return defval;
+  }
+
+  static {
+    try (InputStream is = WordFinder.class.getClassLoader().getResourceAsStream("logging.properties")) {
+      LogManager.getLogManager().readConfiguration(is);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
 
