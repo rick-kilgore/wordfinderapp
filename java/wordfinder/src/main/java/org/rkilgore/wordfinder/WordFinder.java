@@ -145,13 +145,11 @@ public class WordFinder {
     if (!template.isEmpty()) {
       if (Character.isDigit(template.charAt(0))) {
         maxPrefix = Character.digit(template.charAt(0), 10);
-        System.out.println("maxPrefix = " + maxPrefix);
         template = template.substring(1);
       }
       int last = template.length() - 1;
       if (Character.isDigit(template.charAt(last))) {
         maxPostfix = Character.digit(template.charAt(last), 10);
-        System.out.println("maxPostfix = " + maxPostfix);
         template = template.substring(0, last);
       }
     }
@@ -176,10 +174,12 @@ public class WordFinder {
         tiles.add(Tile.TWORD);
       } else if (Character.isUpperCase(ch)) {
         tiles.add(Tile.openTileWithLetter(Character.toLowerCase(ch)));
-      } else if (Character.isLetter(ch) && mode == Mode.NORMAL) {
-        tiles.add(Tile.forLetter(ch));
-      } else if (Character.isLetter(ch) /* && mode == Mode.NORMAL */) {
-        tiles.add(Tile.openTileWithLetter(Character.toLowerCase(ch)));
+      } else if (Character.isLetter(ch)) {
+        if (mode == Mode.NORMAL) {
+          tiles.add(Tile.forLetter(ch));
+        } else {
+          tiles.add(Tile.openTileWithLetter(Character.toLowerCase(ch)));
+        }
       } else {
         throw new RuntimeException(String.format("Unrecognized character in template: '%c'", ch));
       }
@@ -227,6 +227,8 @@ public class WordFinder {
       last.wordMult = 3;
     } else if (modch == '0') {
       last.isZeroLetter = true;
+    } else if (modch == '@') {
+      last.open = false;
     } else {
       throw new RuntimeException(String.format("Unrecognized mod character: '%c'", modch));
     }
@@ -309,9 +311,17 @@ public class WordFinder {
                                // forDepth(depth),
                                // sofar, letters, template));
 
-        addLetterFromLettersAndRecurse(
+        Tile nextTile = template.get(0);
+        if (!nextTile.open) {
+          // ---> <letter>:n means add this char from template as a normal template character - i.e. don't do over under
+          addLetterFromTemplateAndRecurse(
             depth, sofar, dotsSoFar, scoreSoFar, nodeSoFar, overUnder,
-            letters, template, curPrefixLen, curPostfixLen, LetterPlacement.TEMPLATE);
+            letters, template, curPrefixLen);
+        } else {
+          addLetterFromLettersAndRecurse(
+              depth, sofar, dotsSoFar, scoreSoFar, nodeSoFar, overUnder,
+              letters, template, curPrefixLen, 0, LetterPlacement.TEMPLATE);
+        }
 
     } else {
       addToPostfixOrTerminate(depth, overUnder, sofar, dotsSoFar, scoreSoFar, nodeSoFar,
@@ -319,11 +329,10 @@ public class WordFinder {
     }
 
     // ---> if no word started and more template left, try removng one template letter (start after that point)
-    if (sofar.length() == 0 && template.size() > 1) {
+    if (sofar.length() == 0 && !template.isEmpty()) {
       List<Tile> newtemplate = template.subList(1, template.size());
-      addLetterFromLettersAndRecurse( 
-          depth, sofar, dotsSoFar, scoreSoFar, nodeSoFar, overUnder,
-          letters, newtemplate, curPrefixLen, curPostfixLen, LetterPlacement.TEMPLATE);
+      recurseOverUnder(depth, overUnder, sofar, dotsSoFar, scoreSoFar, nodeSoFar,
+                       letters, newtemplate, false, 0, 0);
     }
   }
 
@@ -393,41 +402,36 @@ public class WordFinder {
     assert !template.isEmpty();
 
     Tile nextTile = template.get(0);
-    if (!nextTile.open) {
+    if (nextTile.open && !nextTile.hasLetter()) {
+        // ---> open empty tile ([.-+#!])
+        addLetterFromLettersAndRecurse(
+            depth, sofar, dotsSoFar, scoreSoFar, nodeSoFar, OverUnder.empty,
+            letters, template, curPrefixLen, 0, LetterPlacement.TEMPLATE);
+
+    } else {
       // ---> template letter tile - add letter from template
-      assert nextTile.hasLetter();
+      assert nextTile.open || nextTile.hasLetter();
       debugLog(String.format("%s  add templ letter '%c': sofar=%s letters=%s templ=%s",
                              forDepth(depth),
                              template.get(0).letter,
                              sofar, letters, template));
 
-      addLetterFromTemplateAndRecurse(
-            depth, sofar, dotsSoFar, scoreSoFar, nodeSoFar,
-            letters, template, curPrefixLen, 0, false);
-
-    } else if (nextTile.hasLetter()) {
-      // ---> tile for which user has requested to put one of their letters in this spot
-      debugLog(String.format("%s  designated letter tile - take '%c' from letters: sofar=%s letters=%s templ=%s",
-                             forDepth(depth),
-                             nextTile.letter, sofar, letters, template));
-      char ch = nextTile.letter;
-      if (letters.indexOf(ch) == -1) {
-        // can't fulfill this request
-        debugLog(String.format("%s  recursion stopped - cannot fill template letter tile '%c': sofar=%s letters=%s templ=%s",
-                               forDepth(depth),
-                               nextTile.letter, sofar, letters, template));
-        return;
+      if (nextTile.open && nextTile.hasLetter()) {
+        // ---> user has requested to put one of their letters in this spot
+        char ch = nextTile.letter;
+        if (letters.indexOf(ch) == -1) {
+          // can't fulfill this request
+          debugLog(String.format("%s  recursion stopped - cannot fill template letter tile '%c': sofar=%s letters=%s templ=%s",
+                                 forDepth(depth),
+                                 nextTile.letter, sofar, letters, template));
+          return;
+        }
+        letters = letters.replaceFirst(String.valueOf(ch), "");
       }
-      letters = letters.replaceFirst(String.valueOf(ch), "");
-      addLetterFromTemplateAndRecurse(
-          depth, sofar, dotsSoFar, scoreSoFar, nodeSoFar,
-          letters, template, curPrefixLen, 0, true);
 
-    } else {
-        // ---> open empty tile ([.-+#!])
-        addLetterFromLettersAndRecurse(
+      addLetterFromTemplateAndRecurse(
             depth, sofar, dotsSoFar, scoreSoFar, nodeSoFar, OverUnder.empty,
-            letters, template, curPrefixLen, 0, LetterPlacement.TEMPLATE);
+            letters, template, curPrefixLen);
     }
   }
 
@@ -465,12 +469,13 @@ public class WordFinder {
   private void addLetterFromTemplateAndRecurse(
         int depth, String sofar, String dotsSoFar,
         ScoreKeeper scoreSoFar,
-        TrieNode nodeSoFar,
+        TrieNode nodeSoFar, OverUnder overUnder,
         String letters, List<Tile> template,
-        int curPrefixLen, int curPostfixLen, boolean usingLetter) {
+        int curPrefixLen) {
     Tile nextTile = template.get(0);
     char ch = nextTile.letter;
     TrieNode nextNode = nodeSoFar.isPrefix(Character.toString(ch));
+    boolean isOverUnder = this._mode != Mode.NORMAL;
     if (nextNode != null) {
       String nextsofar = sofar + ch;
       List<Tile> newtemplate = template.subList(1, template.size());
@@ -479,11 +484,18 @@ public class WordFinder {
       // debugLog(String.format("%sadding to TEMPLATE: scoreAdd=%d wordMult=%d for %s + '%c' on %s space",
             // forDepth(depth), scoreAdd, wordMult, sofar, ch, template.get(0)));
       ScoreKeeper nextScore = scoreSoFar.add(scoreAdd).mult(wordMult);
-      if (nextNode.isword && (newtemplate.isEmpty() || this._mode != Mode.NORMAL) && hasRequiredLetters(nextsofar)) {
-        addWord(depth, nextsofar, nextScore, dotsSoFar, null);
+      if (nextNode.isword
+          && (newtemplate.isEmpty() || (isOverUnder && (newtemplate.isEmpty() || newtemplate.get(0).open)))
+          && hasRequiredLetters(nextsofar)) {
+        addWord(depth, nextsofar, nextScore, dotsSoFar, overUnder);
       }
-      recurseNormal(depth+1, nextsofar, dotsSoFar, nextScore, nextNode,
-                    letters, newtemplate, true, curPrefixLen, curPostfixLen);
+      if (isOverUnder) {
+        recurseOverUnder(depth+1, overUnder, nextsofar, dotsSoFar, nextScore, nextNode,
+                         letters, newtemplate, true, curPrefixLen, 0);
+      } else {
+        recurseNormal(depth+1, nextsofar, dotsSoFar, nextScore, nextNode,
+                      letters, newtemplate, true, curPrefixLen, 0);
+      }
     }
   }
 
@@ -550,7 +562,9 @@ public class WordFinder {
                                    letterAdd,
                                    ouScoreAdd,
                                    nextScore));
-            if (nextNode.isword && templateFirstLetterCovered /* && hasRequiredLetters(nextsofar) */) {
+            if (nextNode.isword && templateFirstLetterCovered
+                && (newtemplate.isEmpty() || newtemplate.get(0).open)
+                /* && hasRequiredLetters(nextsofar) */) {
               addWord(depth, nextsofar, nextScore, nextDotsSoFar, nextOverUnder);
             }
             recurseOverUnder(depth+1, nextOverUnder, nextsofar, nextDotsSoFar, nextScore, nextNode,
@@ -744,7 +758,7 @@ public class WordFinder {
       System.out.println("Letters can be a-z or '.' to represent a blank tile");
       return false;
     }
-    if (template.matches(".*[^a-zA-Z0-9\\.\\-\\+#!:].*")) {
+    if (template.matches(".*[^a-zA-Z0-9\\.\\-\\+#!:@].*")) {
       System.out.println("invalid template: "+template);
       System.out.print("The template can be a-z, '.' for an open space, ");
       System.out.println("[- + # !] to represent [DL TL DW TW], or ':' to start a mod");

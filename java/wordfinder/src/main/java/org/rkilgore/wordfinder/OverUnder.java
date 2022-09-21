@@ -3,16 +3,16 @@ package org.rkilgore.wordfinder;
 public class OverUnder {
 
     static {
-      empty = new OverUnder();
+      empty = new OverUnder(null, -1);
     }
 
-    public String chars;
-    public int startpos;
+    public final String chars;
+    public final int startpos;
     public static OverUnder empty;
 
-    public OverUnder() {
-        chars = null;
-        startpos = -1;
+    public OverUnder(String chars, int startpos) {
+        this.chars = chars;
+        this.startpos = startpos;
     }
 
     public String toString() {
@@ -35,15 +35,10 @@ public class OverUnder {
     }
 
     public OverUnder addOverUnderChar(char ch, int pos) {
-        OverUnder newone = new OverUnder();
         if (this.chars == null) {
-            newone.chars = String.valueOf(ch);
-            newone.startpos = pos;
-        } else {
-            newone.chars = this.chars + ch;
-            newone.startpos = this.startpos;
+          return new OverUnder(String.valueOf(ch), pos);
         }
-        return newone;
+        return new OverUnder(this.chars + ch, this.startpos);
     }
     
     public boolean isEmpty() {
