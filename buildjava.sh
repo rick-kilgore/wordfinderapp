@@ -13,7 +13,10 @@ if test -e mk.log; then
   cat mk.log
 fi
 
-if test "x$1" = "x-i"; then
-  adb install -r java/app/build/outputs/apk/release/app-release.apk
-  adb shell am start -n org.rkilgore.wordfinderapp/.MainActivity
-fi
+#if test "x$1" = "x-i"; then
+  numdevs=`adb devices | ggrep -iPv 'list of devices|^\s*$' | wc -l | tr -d ' '`
+  if test $numdevs != '0'; then
+    adb install -r java/app/build/outputs/apk/release/app-release.apk
+    adb shell am start -n org.rkilgore.wordfinderapp/.MainActivity
+  fi
+#fi
