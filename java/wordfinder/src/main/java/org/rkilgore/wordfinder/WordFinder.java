@@ -329,10 +329,10 @@ public class WordFinder {
     }
 
     // ---> if no word started and more template left, try removng one template letter (start after that point)
-    if (sofar.length() == 0 && !template.isEmpty()) {
+    if (sofar.length() == 0 && !template.isEmpty() && template.get(0).open) {
       List<Tile> newtemplate = template.subList(1, template.size());
       recurseOverUnder(depth, overUnder, sofar, dotsSoFar, scoreSoFar, nodeSoFar,
-                       letters, newtemplate, false, 0, 0);
+                       letters, newtemplate, true, 0, 0);
     }
   }
 
@@ -476,6 +476,9 @@ public class WordFinder {
     char ch = nextTile.letter;
     TrieNode nextNode = nodeSoFar.isPrefix(Character.toString(ch));
     boolean isOverUnder = this._mode != Mode.NORMAL;
+    debugLog(String.format("%s  ADDING '%c' from template: sofar=%s letters=%s templ=%s",
+                           forDepth(depth), ch,
+                           sofar, letters, template));
     if (nextNode != null) {
       String nextsofar = sofar + ch;
       List<Tile> newtemplate = template.subList(1, template.size());
