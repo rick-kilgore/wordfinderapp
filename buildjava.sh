@@ -5,6 +5,8 @@
 
 PATH="/Library/Java/JavaVirtualMachines/jdk-12.jdk/Contents/Home;$PATH"
 
+cp -v wwf.txt java/app/src/main/assets/
+cp -v scrabble_words.txt java/app/src/main/assets/
 gradle -p java/wordfinder jar |& tee mk.log
 gradle -p java/app assembleRelease |& tee -a mk.log
 ./clean.sh && \
@@ -17,6 +19,7 @@ fi
   numdevs=`adb devices | ggrep -iPv 'list of devices|^\s*$' | wc -l | tr -d ' '`
   if test $numdevs != '0'; then
     adb install -r java/app/build/outputs/apk/release/app-release.apk
+    /Users/rkilgore/bin/usleep 250
     adb shell am start -n org.rkilgore.wordfinderapp/.MainActivity
   fi
 #fi
