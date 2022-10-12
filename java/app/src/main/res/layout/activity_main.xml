@@ -149,6 +149,6 @@
             android:focusableInTouchMode="true"
             android:minHeight="48dp"
             android:textIsSelectable="true"
-            android:textSize="20sp" />
+            android:textSize="16sp" />
     </ScrollView>
 </androidx.constraintlayout.widget.ConstraintLayout>
