@@ -19,8 +19,10 @@ import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
 
-import org.rkilgore.wordfinder.WordFinder;
+import org.rkilgore.wordfinder.FindResult;
 import org.rkilgore.wordfinder.Mode;
+import org.rkilgore.wordfinder.ValidateResult;
+import org.rkilgore.wordfinder.WordFinder;
 import org.rkilgore.wordfinder.WordInfo;
 
 import java.io.IOException;
@@ -111,6 +113,13 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
         }
     }
 
+    private void endFind(ProgressBar spinner, TextView output, StringBuilder sb) {
+      runOnUiThread(() -> {
+          spinner.setVisibility(View.GONE);
+          output.setText(sb.toString());
+      });
+    }
+
     private void findWords(View view) {
         final EditText lettersText = findViewById(R.id.lettersText);
         final EditText patternText = findViewById(R.id.patternText);
@@ -121,8 +130,9 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
         output.setText("");
         output.invalidate();
 
-        if (!WordFinder.validate(letters, pattern)) {
-          output.setText("validation failed");
+        ValidateResult res = WordFinder.validate(letters, pattern);
+        if (!res.valid) {
+          output.setText(res.errmsg);
           output.invalidate();
           return;
         }
@@ -134,15 +144,28 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
 
         Thread thread = new Thread() {
           public void run() {
-            Map<String, WordInfo> map = wf.findWords(MainActivity.this.mode, letters, pattern);
+            FindResult res = wf.findWords(MainActivity.this.mode, letters, pattern);
+            StringBuilder sb = new StringBuilder();
+            if (!res.ok) {
+              sb.append(res.errmsg);
+              endFind(spinner, output, sb);
+              return;
+            }
+            Map<String, WordInfo> map = res.words;
 
             List<String> words = new ArrayList<>(map.keySet());
+            if (words.size() < 1) {
+              sb.append("no words found");
+              endFind(spinner, output, sb);
+              return;
+            }
+
             Collections.sort(words, (String a, String b) -> {
                   WordInfo ainf = map.get(a);
                   WordInfo binf = map.get(b);
                   assert ainf != null;
                   assert binf != null;
-                  if (ainf.score != binf.score) {
+                  if (ainf.score.score() != binf.score.score()) {
                       return binf.score.score - ainf.score.score;
                   }
                   if (a.length() != b.length()) {
@@ -157,7 +180,6 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
                   return a.compareTo(b);
             });
 
-            StringBuilder sb = new StringBuilder();
             for (String word : words) {
                 WordInfo winfo = map.get(word);
                 sb.append(String.format("%s%s%s score:%d%n",
@@ -166,10 +188,7 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
                         winfo.overUnder.isEmpty() ? "" : String.format(" %s", winfo.overUnder.forWord(word, mode)),
                         winfo.score.score()));
             }
-            runOnUiThread(() -> {
-                spinner.setVisibility(View.GONE);
-                output.setText(sb.toString());
-            });
+            endFind(spinner, output, sb);
           }
         };
         thread.start();

@@ -138,11 +138,30 @@ public class WordFinder {
     this.debug = debug;
   }
 
-  public Map<String, WordInfo> findWords(Mode mode, String letters, String template) {
+  public FindResult findWords(Mode mode, String letters, String template) {
 
     int maxPrefix = 7;
     int maxPostfix = 7;
     if (!template.isEmpty()) {
+      if (template.matches("^[nou]\\|.*")) {
+        char modechar = template.charAt(0);
+        switch (modechar) {
+          case 'n':
+            mode = Mode.NORMAL;
+            break;
+          case 'o':
+            mode = Mode.OVER;
+            break;
+          case 'u':
+            mode = Mode.UNDER;
+            break;
+          default:
+            System.out.println("unrecognized mode char " + modechar + ": should be one of [n o u]");
+            System.out.println("ignoring mode char and mode = " + mode);
+            break;
+        }
+        template = template.substring(2);
+      }
       if (Character.isDigit(template.charAt(0))) {
         maxPrefix = Character.digit(template.charAt(0), 10);
         template = template.substring(1);
@@ -153,6 +172,7 @@ public class WordFinder {
         template = template.substring(0, last);
       }
     }
+    System.out.println("mode = " + mode);
 
     List<Tile> tiles = new ArrayList<Tile>();
     boolean modifier = false;
@@ -160,11 +180,15 @@ public class WordFinder {
       if (ch == ':') {
         modifier = true;
       } else if (modifier) {
-        modifyLastTile(tiles, ch);
+        try {
+          modifyLastTile(tiles, ch);
+        } catch (Throwable th) {
+          return new FindResult(this._words, false, th.getMessage());
+        }
         modifier = false;
       } else if (ch == '.') {
         tiles.add(Tile.OPEN);
-      } else if (ch == '-') {
+      } else if (ch == '=') {
         tiles.add(Tile.DLETTER);
       } else if (ch == '+') {
         tiles.add(Tile.TLETTER);
@@ -181,7 +205,7 @@ public class WordFinder {
           tiles.add(Tile.openTileWithLetter(Character.toLowerCase(ch)));
         }
       } else {
-        throw new RuntimeException(String.format("Unrecognized character in template: '%c'", ch));
+        return new FindResult(this._words, false, String.format("Unrecognized character in template: '%c'", ch));
       }
     }
 
@@ -208,7 +232,7 @@ public class WordFinder {
               0 /* curPrefixLen */, 0 /* curPostfixLen */);
     }
 
-    return this._words;
+    return new FindResult(this._words, true, "");
   }
 
 
@@ -217,7 +241,7 @@ public class WordFinder {
       throw new RuntimeException(String.format("No tile to modify with mod %c", modch));
     }
     Tile last = tiles.get(tiles.size() - 1);
-    if (modch == '-') {
+    if (modch == '=') {
       last.letterMult = 2;
     } else if (modch == '+') {
       last.letterMult = 3;
@@ -487,7 +511,7 @@ public class WordFinder {
       // debugLog(String.format("%sadding to TEMPLATE: scoreAdd=%d wordMult=%d for %s + '%c' on %s space",
             // forDepth(depth), scoreAdd, wordMult, sofar, ch, template.get(0)));
       ScoreKeeper nextScore = scoreSoFar.add(scoreAdd).mult(wordMult);
-      if (nextNode.isword
+      if ((nextNode.isword || (nextsofar.length() == 1 && isOverUnder))
           && (newtemplate.isEmpty() || (isOverUnder && (newtemplate.isEmpty() || newtemplate.get(0).open)))
           && hasRequiredLetters(nextsofar)) {
         addWord(depth, nextsofar, nextScore, dotsSoFar, overUnder);
@@ -565,7 +589,8 @@ public class WordFinder {
                                    letterAdd,
                                    ouScoreAdd,
                                    nextScore));
-            if (nextNode.isword && templateFirstLetterCovered
+            if ((nextNode.isword || (nextsofar.length() == 1 && isOverUnder))
+                && templateFirstLetterCovered
                 && (newtemplate.isEmpty() || newtemplate.get(0).open)
                 /* && hasRequiredLetters(nextsofar) */) {
               addWord(depth, nextsofar, nextScore, nextDotsSoFar, nextOverUnder);
@@ -574,7 +599,9 @@ public class WordFinder {
                              newletters, newtemplate, nextTemplateStarted, nextPre, nextPost);
 
           } else {
-            if (nextNode.isword && newtemplate.isEmpty() && hasRequiredLetters(nextsofar)) {
+            if ((nextNode.isword || (nextsofar.length() == 1 && isOverUnder))
+                && newtemplate.isEmpty()
+                && hasRequiredLetters(nextsofar)) {
               addWord(depth, nextsofar, nextScore, nextDotsSoFar, null);
             }
             recurseNormal(depth+1, nextsofar, nextDotsSoFar, nextScore, nextNode,
@@ -697,38 +724,57 @@ public class WordFinder {
     Mode mode = Mode.NORMAL;
     boolean wwf = false;
     boolean debug = false;
-    while (argc < args.length && args[argc].startsWith("-")) {
-      String val = nextArg(args, argc++);
-      if ("-under".startsWith(val)) {
-        mode = Mode.UNDER;
-      } else if ("-over".startsWith(val)) {
-        mode = Mode.OVER;
-      } else if ("-debug".startsWith(val)) {
-        debug = true;
-      } else if ("-wwf".startsWith(val)) {
-        wwf = true;
+    String usage = "usage: WordFinder [-wwf] [-o|-u] [-d] <letters> <template>";
+    String letters = "";
+    String template = "";
+    while (argc < args.length) {
+      String arg = nextArg(args, argc++);
+      if (arg.startsWith("-")) {
+        if ("-under".startsWith(arg)) {
+          mode = Mode.UNDER;
+        } else if ("-over".startsWith(arg)) {
+          mode = Mode.OVER;
+        } else if ("-debug".startsWith(arg)) {
+          debug = true;
+        } else if ("-wwf".startsWith(arg)) {
+          wwf = true;
+        } else {
+          System.out.println("unrecognized option: "+arg);
+          System.out.println(usage);
+          System.exit(1);
+        }
+      } else if (letters.isEmpty()) {
+        letters = arg;
+      } else if (template.isEmpty()) {
+        template = arg;
       } else {
-        System.out.println("unrecognized option: "+val);
-        System.exit(1);
+        System.out.println(usage);
       }
     }
-    System.out.println("mode = " + mode);
-    String letters = nextArg(args, argc++);
-    String template = nextArg(args, argc++);
 
-    if (!validate(letters, template)) {
+    ValidateResult vres = validate(letters, template);
+    if (!vres.valid) {
+      System.out.println(vres.errmsg);
       return;
     }
 
-    WordFinder.reportTime("loading dictionary...");
+    // WordFinder.reportTime("loading dictionary...");
     WordFinder wf = new WordFinder(wwf ? "./wwf.txt" : "./scrabble_words.txt", wwf);
     wf.setDebug(debug);
-    WordFinder.reportTime("loaded.");
+    // WordFinder.reportTime("loaded.");
 
-    Map<String, WordInfo> map = wf.findWords(mode, letters, template);
-    WordFinder.reportTime("findWords complete.");
+    FindResult fres = wf.findWords(mode, letters, template);
+    if (!fres.ok) {
+      System.out.println(fres.errmsg);
+      return;
+    }
+    Map<String, WordInfo> map = fres.words;
+    // WordFinder.reportTime("findWords complete.");
 
     List<String> words = new ArrayList<>(map.keySet());
+    if (words.size() < 1) {
+      System.out.println("no words found");
+    }
     words.sort((a, b) -> {
         WordInfo wia = map.get(a);
         WordInfo wib = map.get(b);
@@ -755,19 +801,20 @@ public class WordFinder {
     }
   }
 
-  public static boolean validate(String letters, String template) {
+  public static ValidateResult validate(String letters, String template) {
+    StringBuilder errmsg = new StringBuilder();
     if (letters.length() < 1 || letters.matches(".*[^a-zA-Z\\.].*")) {
-      System.out.println("invalid letters: "+letters);
-      System.out.println("Letters can be a-z or '.' to represent a blank tile");
-      return false;
+      errmsg.append("invalid letters: ").append(letters);
+      errmsg.append("\nLetters can be a-z or '.' to represent a blank tile");
+      return new ValidateResult(false, errmsg.toString());
     }
-    if (template.matches(".*[^a-zA-Z0-9\\.\\-\\+#!:@].*")) {
-      System.out.println("invalid template: "+template);
-      System.out.print("The template can be a-z, '.' for an open space, ");
-      System.out.println("[- + # !] to represent [DL TL DW TW], or ':' to start a mod");
-      return false;
+    if (template.matches(".*[^a-zA-Z0-9\\|\\.=\\+#!:@].*")) {
+      errmsg.append("invalid template: ").append(template).append("\n");
+      errmsg.append("The template can include:\n  ‣ a-z\n  ‣ '.' for an open space\n");
+      errmsg.append("  ‣ [= + # !] to represent [DL TL DW TW]\n  ‣ ':' to start a mod");
+      return new ValidateResult(false, errmsg.toString());
     }
-    return true;
+    return new ValidateResult(true, "inputs are valid");
   }
 
   private boolean debug;
