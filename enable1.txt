@@ -20526,6 +20526,7 @@ camisole
 camisoles
 camlet
 camlets
+camo
 camomile
 camomiles
 camorra
@@ -34968,7 +34969,6 @@ culverins
 culvers
 culvert
 culverts
-cum
 cumarin
 cumarins
 cumber
@@ -49672,6 +49672,7 @@ enzymologist
 enzymologists
 enzymology
 enzyms
+eo
 eobiont
 eobionts
 eohippus
@@ -79212,6 +79213,7 @@ jazzlike
 jazzman
 jazzmen
 jazzy
+je
 jealous
 jealousies
 jealously
@@ -121396,6 +121398,7 @@ qanat
 qanats
 qat
 qats
+qi
 qindar
 qindarka
 qindars
@@ -152813,6 +152816,7 @@ teiid
 teiids
 teind
 teinds
+tej
 tektite
 tektites
 tektitic
