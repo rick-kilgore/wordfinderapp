@@ -795,7 +795,7 @@ public class WordFinder {
         System.out.printf(Locale.ROOT, "%s%s%s score:%d%n",
                 winfo.dotVals.isEmpty() ? "" : winfo.dotVals + ": ",
                 word,
-                winfo.overUnder.isEmpty() ? "" : String.format(" %s", winfo.overUnder.forWord(word, mode)),
+                winfo.overUnder.isEmpty() ? "" : String.format(" %s", winfo.overUnder.forWord(word, wf._mode)),
                 winfo.score.score());
       }
     }
