@@ -134,11 +134,19 @@ public class WordFinder {
     this.debug = false;
   }
 
+  public Mode getMode() {
+    return this._mode;
+  }
+
+  public void setMode(Mode mode) {
+    this._mode = mode;
+  }
+
   public void setDebug(boolean debug) {
     this.debug = debug;
   }
 
-  public FindResult findWords(Mode mode, String letters, String template) {
+  public FindResult findWords(String letters, String template) {
 
     int maxPrefix = 7;
     int maxPostfix = 7;
@@ -147,17 +155,17 @@ public class WordFinder {
         char modechar = template.charAt(0);
         switch (modechar) {
           case 'n':
-            mode = Mode.NORMAL;
+            this._mode = Mode.NORMAL;
             break;
           case 'o':
-            mode = Mode.OVER;
+            this._mode = Mode.OVER;
             break;
           case 'u':
-            mode = Mode.UNDER;
+            this._mode = Mode.UNDER;
             break;
           default:
             System.out.println("unrecognized mode char " + modechar + ": should be one of [n o u]");
-            System.out.println("ignoring mode char and mode = " + mode);
+            System.out.println("ignoring mode char and mode = " + this._mode);
             break;
         }
         template = template.substring(2);
@@ -172,7 +180,7 @@ public class WordFinder {
         template = template.substring(0, last);
       }
     }
-    System.out.println("mode = " + mode);
+    System.out.println("mode is " + this._mode);
 
     List<Tile> tiles = new ArrayList<Tile>();
     boolean modifier = false;
@@ -199,7 +207,7 @@ public class WordFinder {
       } else if (Character.isUpperCase(ch)) {
         tiles.add(Tile.openTileWithLetter(Character.toLowerCase(ch)));
       } else if (Character.isLetter(ch)) {
-        if (mode == Mode.NORMAL) {
+        if (this._mode == Mode.NORMAL) {
           tiles.add(Tile.forLetter(ch));
         } else {
           tiles.add(Tile.openTileWithLetter(Character.toLowerCase(ch)));
@@ -215,12 +223,11 @@ public class WordFinder {
     this._maxPrefix = maxPrefix;
     this._maxPostfix = maxPostfix;
     this._words = new HashMap<String, WordInfo>();
-    this._mode = mode;
     this._fullTemplate = tiles;
     int charsBeforeFirstLetter = 0;
     while (tiles.size() > charsBeforeFirstLetter && !tiles.get(charsBeforeFirstLetter).hasLetter()) ++charsBeforeFirstLetter;
     this._templateFirstLetterIndex = charsBeforeFirstLetter;
-    if (mode == Mode.NORMAL) {
+    if (this._mode == Mode.NORMAL) {
       recurseNormal(0 /* depth */, "" /* sofar */, "" /* dotsSoFar */,
               ScoreKeeper.empty, this._dict /* nodeSoFar */,
               letters, tiles, false /* templateStarted */,
@@ -760,10 +767,11 @@ public class WordFinder {
 
     // WordFinder.reportTime("loading dictionary...");
     WordFinder wf = new WordFinder(wwf ? "./wwf.txt" : "./scrabble_words.txt", wwf);
+    wf._mode = mode;
     wf.setDebug(debug);
     // WordFinder.reportTime("loaded.");
 
-    FindResult fres = wf.findWords(mode, letters, template);
+    FindResult fres = wf.findWords(letters, template);
     if (!fres.ok) {
       System.out.println(fres.errmsg);
       return;

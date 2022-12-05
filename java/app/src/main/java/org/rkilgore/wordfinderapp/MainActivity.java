@@ -32,13 +32,13 @@ import java.util.logging.LogManager;
 
 public class MainActivity extends AppCompatActivity implements View.OnKeyListener, AdapterView.OnItemSelectedListener {
 
-  static {
-    try (InputStream is = WordFinder.class.getClassLoader().getResourceAsStream("logging.properties")) {
-      LogManager.getLogManager().readConfiguration(is);
-    } catch (IOException e) {
-      e.printStackTrace();
+    static {
+      try (InputStream is = WordFinder.class.getClassLoader().getResourceAsStream("logging.properties")) {
+        LogManager.getLogManager().readConfiguration(is);
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     }
-  }
 
     private boolean useWwf;
     private boolean debug;
@@ -140,11 +140,12 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
         ProgressBar spinner = findViewById(R.id.progressBar);
         spinner.setVisibility(View.VISIBLE);
         final WordFinder wf = this.useWwf ? this.wwf : this.wf;
+        wf.setMode(MainActivity.this.mode);
         wf.setDebug(this.debug);
 
         Thread thread = new Thread() {
           public void run() {
-            FindResult res = wf.findWords(MainActivity.this.mode, letters, pattern);
+            FindResult res = wf.findWords(letters, pattern);
             StringBuilder sb = new StringBuilder();
             if (!res.ok) {
               sb.append(res.errmsg);
@@ -180,12 +181,13 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
                   return a.compareTo(b);
             });
 
+            System.out.println("printing results: mode = " + wf.getMode());
             for (String word : words) {
                 WordInfo winfo = map.get(word);
                 sb.append(String.format("%s%s%s score:%d%n",
                         winfo.dotVals.isEmpty() ? "" : winfo.dotVals + ": ",
                         word,
-                        winfo.overUnder.isEmpty() ? "" : String.format(" %s", winfo.overUnder.forWord(word, mode)),
+                        winfo.overUnder.isEmpty() ? "" : String.format(" %s", winfo.overUnder.forWord(word, wf.getMode())),
                         winfo.score.score()));
             }
             endFind(spinner, output, sb);
