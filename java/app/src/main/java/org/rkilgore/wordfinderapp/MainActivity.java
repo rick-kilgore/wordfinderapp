@@ -71,8 +71,14 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
     }
 
     public void onDebugClicked(View view) {
-      final CheckBox cb = (CheckBox) view;
-      this.debug = cb.isChecked();
+        final CheckBox cb = (CheckBox) view;
+        this.debug = cb.isChecked();
+    }
+
+    public void onEdit(View view) {
+      final EditText lettersText = findViewById(R.id.lettersText);
+      lettersText.requestFocus();
+      showKeyboard();
     }
 
     public void sendMessage(View view) {
@@ -81,16 +87,25 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
     }
 
     private void hideKeyboard() {
+        View view = this.getCurrentFocus();
+        if (view != null) {
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        }
+        try { Thread.sleep(250); } catch(InterruptedException e) {
+            // ignore
+        }
+    }
+
+    private void showKeyboard() {
       View view = this.getCurrentFocus();
       if (view != null) {
         InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-        imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
+        imm.showSoftInput(view, 0);
       }
-        try {
-            Thread.sleep(250);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+      try { Thread.sleep(250); } catch(InterruptedException e) {
+          // ignore
+      }
     }
 
     private void endFind(ProgressBar spinner, TextView output, StringBuilder sb) {

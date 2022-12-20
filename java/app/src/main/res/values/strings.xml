@@ -3,11 +3,6 @@
     <string name="letters">letters (\'.\' for a blank)</string>
     <string name="pattern">pattern to fill (\'.\' for use letters)</string>
     <string name="button_search">Search</string>
-    <string-array name="modes">
-        <item>Normal</item>
-        <item>Over</item>
-        <item>Under</item>
-    </string-array>
-    <string name="wwf">WWF</string>
+    <string name="edit">Edit</string>
     <string name="debug">debug</string>
 </resources>
