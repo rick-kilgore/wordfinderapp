@@ -11,12 +11,9 @@ import android.text.InputType;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ProgressBar;
-import android.widget.Spinner;
 import android.widget.TextView;
 
 import org.rkilgore.wordfinder.FindResult;
@@ -30,7 +27,7 @@ import java.io.InputStream;
 import java.util.*;
 import java.util.logging.LogManager;
 
-public class MainActivity extends AppCompatActivity implements View.OnKeyListener, AdapterView.OnItemSelectedListener {
+public class MainActivity extends AppCompatActivity implements View.OnKeyListener {
 
     static {
       try (InputStream is = WordFinder.class.getClassLoader().getResourceAsStream("logging.properties")) {
@@ -40,15 +37,12 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
       }
     }
 
-    private boolean useWwf;
     private boolean debug;
     private WordFinder wf;
-    private WordFinder wwf;
     private Mode mode;
 
 
     public MainActivity() {
-      this.useWwf = false;
       this.debug = false;
     }
 
@@ -58,13 +52,6 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
         setContentView(R.layout.activity_main);
 
         AndroidLoggingHandler.reset(new AndroidLoggingHandler());
-
-        final Spinner modes = findViewById(R.id.modes_pulldown);
-        ArrayAdapter<CharSequence> items
-                = ArrayAdapter.createFromResource(this, R.array.modes, android.R.layout.simple_spinner_item);
-        items.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-        modes.setAdapter(items);
-        modes.setOnItemSelectedListener(this);
 
         ProgressBar spinner = findViewById(R.id.progressBar);
         spinner.setVisibility(View.GONE);
@@ -76,18 +63,11 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
         patternText.setOnKeyListener(this);
         lettersText.requestFocus();
 
-        Scanner wordsFile = null;
         try {
-            this.wf = new WordFinder(new Scanner(getAssets().open("scrabble_words.txt")), false);
-            this.wwf = new WordFinder(new Scanner(getAssets().open("wwf.txt")), true);
+            this.wf = new WordFinder(new Scanner(getAssets().open("wwf.txt")), true);
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    public void onWwfClicked(View view) {
-      final CheckBox cb = (CheckBox) view;
-      this.useWwf = cb.isChecked();
     }
 
     public void onDebugClicked(View view) {
@@ -129,6 +109,7 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
         final TextView output = findViewById(R.id.outputText);
         output.setText("");
         output.invalidate();
+        output.requestFocus();
 
         ValidateResult res = WordFinder.validate(letters, pattern);
         if (!res.valid) {
@@ -139,9 +120,7 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
 
         ProgressBar spinner = findViewById(R.id.progressBar);
         spinner.setVisibility(View.VISIBLE);
-        final WordFinder wf = this.useWwf ? this.wwf : this.wf;
-        wf.setMode(MainActivity.this.mode);
-        wf.setDebug(this.debug);
+        this.wf.setDebug(this.debug);
 
         Thread thread = new Thread() {
           public void run() {
@@ -202,21 +181,5 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
           findWords(view);
       }
       return true;
-    }
-
-    @Override
-    public void onItemSelected(AdapterView<?> adapterView, View view, int i, long l) {
-        String selected = ((String) adapterView.getItemAtPosition(i)).toLowerCase(Locale.ROOT);
-        this.mode = Mode.NORMAL;
-        for (Mode mode : Mode.values()) {
-            if (selected.equals(mode.name().toLowerCase(Locale.ROOT))) {
-                this.mode = mode;
-            }
-        }
-    }
-
-    @Override
-    public void onNothingSelected(AdapterView<?> adapterView) {
-        this.mode = Mode.NORMAL;
     }
 }

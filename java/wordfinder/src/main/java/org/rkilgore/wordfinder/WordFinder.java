@@ -150,17 +150,17 @@ public class WordFinder {
 
     int maxPrefix = 7;
     int maxPostfix = 7;
+    this._mode = Mode.NORMAL;
     if (!template.isEmpty()) {
       if (template.matches("^[nou]\\|.*")) {
         char modechar = template.charAt(0);
         switch (modechar) {
-          case 'n':
-            this._mode = Mode.NORMAL;
-            break;
           case 'o':
+          case 'b':
             this._mode = Mode.OVER;
             break;
           case 'u':
+          case 'a':
             this._mode = Mode.UNDER;
             break;
           default:
