@@ -1,4 +1,4 @@
-#!/Users/rkilgore/.venv/bin/python
+#!/usr/bin/env python3
 
 from io import TextIOWrapper
 

@@ -3,7 +3,10 @@
 #/Library/Java/JavaVirtualMachines/jdk-12.jdk/Contents/Home/bin/javac -d . java/org/rkilgore/*.java >& mk.log && \
 #/usr/bin/jar cvf wordfinder.jar org && \
 
-PATH="/Library/Java/JavaVirtualMachines/jdk-12.jdk/Contents/Home;$PATH"
+if [ `uname` = 'MacOS' ]; then
+  alias grep=ggrep
+fi
+PATH="/opt/gradle-7.6/bin:/Library/Java/JavaVirtualMachines/jdk-12.jdk/Contents/Home:$PATH"
 
 cp -v wwf.txt java/app/src/main/assets/
 cp -v scrabble_words.txt java/app/src/main/assets/
@@ -16,7 +19,7 @@ if test -e mk.log; then
 fi
 
 #if test "x$1" = "x-i"; then
-  numdevs=`adb devices | ggrep -iPv 'list of devices|^\s*$' | wc -l | tr -d ' '`
+  numdevs=`adb devices | grep -iPv 'list of devices|^\s*$' | wc -l | tr -d ' '`
   if test $numdevs != '0'; then
     adb install -r java/app/build/outputs/apk/release/app-release.apk
     /Users/rkilgore/bin/usleep 250

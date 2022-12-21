@@ -203,13 +203,13 @@ def necessary_chars(letters: str) -> str:
 
 def load_dict(use_trie: bool) -> Any:
   bn = os.path.basename(sys.argv[0])
-  pickle_filename = f"{os.environ.get('HOME')}/wordfinder/{bn}_words.pickle" 
+  pickle_filename = f"{os.environ.get('HOME')}/git/wordfinder/{bn}_words.pickle" 
   if use_trie and os.path.exists(pickle_filename):
     with open(pickle_filename, "rb") as picklefile:
       return pickle.load(picklefile)
 
   else:
-    with open(f"{os.environ.get('HOME')}/wordfinder/scrabble_words.txt") as dictfile:
+    with open(f"{os.environ.get('HOME')}/git/wordfinder/scrabble_words.txt") as dictfile:
       lines = dictfile.readlines()
       if use_trie:
         dictwords = Trie()
