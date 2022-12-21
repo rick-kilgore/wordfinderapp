@@ -86,3 +86,8 @@ lint/tmp/
 wf
 wwf.txt
 .DS_Store
+.altdir
+.altdir2
+.defaultdir
+.stuffdir
+.testsdir
