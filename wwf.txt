@@ -35962,6 +35962,7 @@ czarists
 czaritza
 czaritzas
 czars
+da
 dab
 dabbed
 dabber
@@ -78817,6 +78818,7 @@ izar
 izars
 izzard
 izzards
+ja
 jab
 jabbed
 jabber
@@ -80880,6 +80882,7 @@ khirkahs
 khis
 khoum
 khoums
+ki
 kiang
 kiangs
 kiaugh

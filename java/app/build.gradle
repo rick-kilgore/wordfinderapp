@@ -6,7 +6,7 @@ plugins {
 android {
     signingConfigs {
         release {
-            storeFile file('/Users/rkilgore/local/wordfinder/java/wfks.jks')
+            storeFile file('/Users/rkilgore/git/wordfinder/java/wfks.jks')
             storePassword 'dothefind'
             keyAlias 'wfkey'
             keyPassword 'dothefind'

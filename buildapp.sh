@@ -1,6 +1,6 @@
 #!/bin/zsh
 
-if [ `uname` = 'MacOS' ]; then
+if [ `uname -s` = 'Darwin' ]; then
   alias grep=ggrep
 fi
 PATH="/opt/gradle-7.6/bin:/Library/Java/JavaVirtualMachines/jdk-12.jdk/Contents/Home:$PATH"

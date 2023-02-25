@@ -729,9 +729,9 @@ public class WordFinder {
   public static void main(String[] args) {
     int argc = 0;
     Mode mode = Mode.NORMAL;
-    boolean wwf = false;
+    boolean wwf = true;
     boolean debug = false;
-    String usage = "usage: WordFinder [-wwf] [-o|-u] [-d] <letters> <template>";
+    String usage = "usage: WordFinder [-ww] [-o|-u] [-d] <letters> <template>";
     String letters = "";
     String template = "";
     while (argc < args.length) {
@@ -743,8 +743,8 @@ public class WordFinder {
           mode = Mode.OVER;
         } else if ("-debug".startsWith(arg)) {
           debug = true;
-        } else if ("-wwf".startsWith(arg)) {
-          wwf = true;
+        } else if ("-ww".startsWith(arg)) {
+          wwf = false;
         } else {
           System.out.println("unrecognized option: "+arg);
           System.out.println(usage);
