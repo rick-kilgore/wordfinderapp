@@ -730,10 +730,11 @@ public class WordFinder {
     int argc = 0;
     Mode mode = Mode.NORMAL;
     boolean debug = false;
-    String usage = "usage: WordFinder [-w <wordsfile>] [-o|-u] [-d] <letters> <template>";
+    String usage = "usage: WordFinder [-w <wordsfile>] [-o|-u] [-l] [-d] <letters> <template>";
     String letters = "";
     String template = "";
     String wordsfile = "./wwf.txt";
+    boolean sortbylen = false;
     while (argc < args.length) {
       String arg = nextArg(args, argc++);
       if (arg.startsWith("-")) {
@@ -741,6 +742,8 @@ public class WordFinder {
           mode = Mode.UNDER;
         } else if ("-over".startsWith(arg)) {
           mode = Mode.OVER;
+        } else if ("-length".startsWith(arg)) {
+          sortbylen = true;
         } else if ("-debug".startsWith(arg)) {
           debug = true;
         } else if ("-words".startsWith(arg)) {
@@ -771,31 +774,25 @@ public class WordFinder {
     wf.setDebug(debug);
     // WordFinder.reportTime("loaded.");
 
-    FindResult fres = wf.findWords(letters, template);
-    if (!fres.ok) {
-      System.out.println(fres.errmsg);
+    FindResult findres = wf.findWords(letters, template);
+    if (!findres.ok) {
+      System.out.println(findres.errmsg);
       return;
     }
-    Map<String, WordInfo> map = fres.words;
+    Map<String, WordInfo> map = findres.words;
     // WordFinder.reportTime("findWords complete.");
 
     List<String> words = new ArrayList<>(map.keySet());
     if (words.size() < 1) {
       System.out.println("no words found");
     }
+    final boolean bylen = sortbylen;
     words.sort((a, b) -> {
         WordInfo wia = map.get(a);
         WordInfo wib = map.get(b);
-        if (wia.score.score() != wib.score.score()) {
-          return wia.score.score() - wib.score.score();
-        }
-        if (a.length() != b.length()) {
-          return a.length() - b.length();
-        }
-        if (wia.dotVals.length() != wib.dotVals.length()) {
-          return wia.dotVals.length() - wib.dotVals.length();
-        }
-        return a.compareTo(b);
+        return bylen
+            ? sortByLength(a, b, wia, wib)
+            : sortByScore(a, b, wia, wib);
     });
     for (String word : words) {
       if (!word.equals(template.toLowerCase().replaceAll("\\d", ""))) {
@@ -807,6 +804,32 @@ public class WordFinder {
                 winfo.score.score());
       }
     }
+  }
+
+  static int sortByScore(String a, String b, WordInfo wia, WordInfo wib) {
+    if (wia.score.score() != wib.score.score()) {
+      return wia.score.score() - wib.score.score();
+    }
+    if (a.length() != b.length()) {
+      return a.length() - b.length();
+    }
+    if (wia.dotVals.length() != wib.dotVals.length()) {
+      return wia.dotVals.length() - wib.dotVals.length();
+    }
+    return a.compareTo(b);
+  }
+
+  static int sortByLength(String a, String b, WordInfo wia, WordInfo wib) {
+    if (a.length() != b.length()) {
+      return a.length() - b.length();
+    }
+    if (wia.score.score() != wib.score.score()) {
+      return wia.score.score() - wib.score.score();
+    }
+    if (wia.dotVals.length() != wib.dotVals.length()) {
+      return wia.dotVals.length() - wib.dotVals.length();
+    }
+    return a.compareTo(b);
   }
 
   public static ValidateResult validate(String letters, String template) {
