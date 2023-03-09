@@ -122,15 +122,15 @@ public class WordFinder {
   }
 
 
-  public WordFinder(String dictfilename, boolean wwf) {
+  public WordFinder(String dictfilename) {
     this._dict = new TrieNode(dictfilename);
-    this.setupLetterScores(wwf);
+    this.setupLetterScores(true);
     this.debug = false;
   }
 
-  public WordFinder(Scanner scanner, boolean wwf) {
+  public WordFinder(Scanner scanner) {
     this._dict = new TrieNode(scanner);
-    this.setupLetterScores(wwf);
+    this.setupLetterScores(true);
     this.debug = false;
   }
 
@@ -729,11 +729,11 @@ public class WordFinder {
   public static void main(String[] args) {
     int argc = 0;
     Mode mode = Mode.NORMAL;
-    boolean wwf = true;
     boolean debug = false;
-    String usage = "usage: WordFinder [-ww] [-o|-u] [-d] <letters> <template>";
+    String usage = "usage: WordFinder [-w <wordsfile>] [-o|-u] [-d] <letters> <template>";
     String letters = "";
     String template = "";
+    String wordsfile = "./wwf.txt";
     while (argc < args.length) {
       String arg = nextArg(args, argc++);
       if (arg.startsWith("-")) {
@@ -743,8 +743,8 @@ public class WordFinder {
           mode = Mode.OVER;
         } else if ("-debug".startsWith(arg)) {
           debug = true;
-        } else if ("-ww".startsWith(arg)) {
-          wwf = false;
+        } else if ("-words".startsWith(arg)) {
+          wordsfile = nextArg(args, argc++, wordsfile);
         } else {
           System.out.println("unrecognized option: "+arg);
           System.out.println(usage);
@@ -766,7 +766,7 @@ public class WordFinder {
     }
 
     // WordFinder.reportTime("loading dictionary...");
-    WordFinder wf = new WordFinder(wwf ? "./wwf.txt" : "./scrabble_words.txt", wwf);
+    WordFinder wf = new WordFinder(wordsfile);
     wf._mode = mode;
     wf.setDebug(debug);
     // WordFinder.reportTime("loaded.");
