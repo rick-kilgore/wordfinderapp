@@ -7,11 +7,11 @@ PATH="/opt/gradle-7.6/bin:/Library/Java/JavaVirtualMachines/jdk-12.jdk/Contents/
 
 cp -v wwf.txt java/app/src/main/assets/
 cp -v scrabble_words.txt java/app/src/main/assets/
-gradle -p java/app assembleRelease |& tee -a mk.log
+gradle -p java/app assembleRelease |& tee -a .mk.log
 ./clean.sh
 
-if test -e mk.log; then
-  cat mk.log
+if test -e .mk.log; then
+  cat .mk.log
 fi
 
 numdevs=`adb devices | grep -iPv 'list of devices|^\s*$' | wc -l | tr -d ' '`

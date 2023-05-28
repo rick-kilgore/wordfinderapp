@@ -15,9 +15,9 @@ echo libdir is "$libdir"
 
 cd python
 ./gen_full.py && \
-cython wf.py --embed |& tee mk.log && \
+cython wf.py --embed |& tee .mk.log && \
 gcc wf.c -o wf -I$hdir -L$libdir \
-    -lpython3.10 -O2 |& tee -a mk.log && \
+    -lpython3.10 -O2 |& tee -a .mk.log && \
 mv wf ../
 cd ..
 if test "x$1" = "x-i"; then
