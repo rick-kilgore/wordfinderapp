@@ -64,7 +64,7 @@ public class MainActivity extends AppCompatActivity implements View.OnKeyListene
         lettersText.requestFocus();
 
         try {
-            this.wf = new WordFinder(new Scanner(getAssets().open("wwf.txt")), true);
+            this.wf = new WordFinder(new Scanner(getAssets().open("wwf.txt")));
         } catch (IOException e) {
             e.printStackTrace();
         }
